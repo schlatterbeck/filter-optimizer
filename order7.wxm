@@ -1,0 +1,47 @@
+/* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ]*/
+/* [ Created with wxMaxima version 19.01.2x ] */
+/* [wxMaxima: input   start ] */
+H1: 1 - 2 * %e^(-%i*omega) + 4 * %e^(-%i*2*omega) - 2 * %e^(-%i*3*omega) + %e^(-%i*4*omega);
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+h2: H / (%e^(-2*%i*omega));
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+h3:expand(h2: H / (%e^(-2*%i*omega)));
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+h4:ratsimp(demoivre(h3));
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+H2: b_0 + b_1*%e^(-%i*omega) + b_2*%e^(-%i*2*omega) + b_3*%e^(-%i*3*omega)
+      + b_3*%e^(-%i*4*omega) + b_2*%e^(-%i*5*omega) + b_1*%e^(-%i*6*omega)
+      + b_0*%e^(-%i*7*omega);
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+h22: H2 / (%e^((-7/2)*%i*omega));
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+h23: expand(h22);
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+h24:ratsimp(demoivre(h23));
+/* [wxMaxima: input   end   ] */
+
+
+
+/* Old versions of Maxima abort on loading files that end in a comment. */
+"Created with wxMaxima 19.01.2x"$
