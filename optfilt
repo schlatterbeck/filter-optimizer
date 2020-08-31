@@ -2,50 +2,13 @@
 
 from __future__ import print_function
 from scipy      import signal
+from bisect     import bisect
 import pga
 import sys
 import numpy as np
 from rsclib.autosuper import autosuper
 from filterplot import plot_response, plot_delay, pole_zero_plot
-
-class Filter_Bound (object) :
-
-    def __init__ (self, xmin, xmax, ymin, ymax, n = 6, use_cos = False) :
-        a = np.array (range (n)) / (n - 1.0)
-        if use_cos :
-            a = np.cos (a * np.pi) / -2.0 + 0.5
-        self.x = (a * (xmax - xmin) + xmin) * 2 * np.pi
-        self.y = a * (ymax - ymin) + ymin
-    # end def __init__
-
-# end class Filter_Bound
-
-class Filter_Bounds (object) :
-
-    def __init__ (self, * bounds, is_lower = False) :
-        self.is_lower = is_lower
-        self.by_x = {}
-        for b in bounds :
-            for x, y in zip (b.x, b.y) :
-                if x in self.by_x :
-                    if self.is_lower :
-                        if y > self.by_x [x] :
-                            self.by_x [x] = y
-                    else :
-                        if y < self.by_x [x] :
-                            self.by_x [x] = y
-                else :
-                    self.by_x [x] = y
-        self.x = np.array (sorted (self.by_x))
-        self.y = np.array ([self.by_x [i] for i in self.x])
-    # end def __init__
-
-    def __iter__ (self) :
-        for x, y in zip (self.x, self.y) :
-            yield (x, y)
-    # end def __iter__
-
-# end class Filter_Bounds
+from filterplot import Filter_Bound, Filter_Bounds
 
 class Filter_Opt (pga.PGA, autosuper) :
     """ Optimize a filter with differential evolution

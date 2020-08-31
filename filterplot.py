@@ -1,8 +1,76 @@
 #!/usr/bin/env python
 
-from scipy import signal
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy  import signal
+from bisect import bisect_left
+from rsclib.iter_recipes import pairwise
+
+class Filter_Bound (object) :
+
+    def __init__ (self, xmin, xmax, ymin, ymax, n = 6, use_cos = False) :
+        self.xmin = xmin
+        self.xmax = xmax
+        self.ymin = ymin
+        self.ymax = ymax
+        a = np.array (range (n)) / (n - 1.0)
+        if use_cos :
+            a = np.cos (a * np.pi) / -2.0 + 0.5
+        self.x = (a * (xmax - xmin) + xmin) * 2 * np.pi
+        self.y = a * (ymax - ymin) + ymin
+    # end def __init__
+
+    def interpolate (self, x) :
+        assert self.xmin <= x <= self.xmax
+        d = (x - self.xmin) / (self.xmax - self.xmin)
+        return (d * (self.ymax - self.ymin) + self.ymin)
+    # end def interpolate
+
+# end class Filter_Bound
+
+class Filter_Bounds (object) :
+
+    def __init__ (self, * bounds, is_lower = False) :
+        self.bounds = list (sorted (bounds, key = lambda b: b.xmin))
+        self.lower  = [x.xmin for x in self.bounds]
+        self.is_lower = is_lower
+        self.by_x = {}
+        for b in bounds :
+            for x, y in zip (b.x, b.y) :
+                if x in self.by_x :
+                    if self.is_lower :
+                        if y > self.by_x [x] :
+                            self.by_x [x] = y
+                    else :
+                        if y < self.by_x [x] :
+                            self.by_x [x] = y
+                else :
+                    self.by_x [x] = y
+        self.x = np.array (sorted (self.by_x))
+        self.y = np.array ([self.by_x [i] for i in self.x])
+    # end def __init__
+
+    def add_offset (self, offset) :
+        self.y = self.y + offset
+    # end def add_offset
+
+    def interpolate (self, x) :
+        idx = bisect_left (self.lower, x)
+        if idx == 0 and self.bounds [idx].xmin > x :
+            raise ValueError ("Too small: %s" % x)
+        if idx >= len (self.lower) :
+            idx = idx - 1
+        if idx == len (self.lower) - 1 and self.bounds [idx].xmax < x :
+            raise ValueError ("Too large: %s" % x)
+        return self.bounds [idx].interpolate (x)
+    # end def interpolate
+
+    def __iter__ (self) :
+        for x, y in zip (self.x, self.y) :
+            yield (x, y)
+    # end def __iter__
+
+# end class Filter_Bounds
 
 def plot_response \
     ( w, h
@@ -56,7 +124,9 @@ def plot_response \
 def plot_delay \
     ( w, d, title = "", fs = None
     , logx = False, xmin = 0.0, xmax = None, ymin = None, ymax = None
+    , constraints = [], auto_ylimit = True, d_in_samples = False
     ) :
+
     fig = plt.figure ()
     ax1 = fig.add_subplot (111)
     if logx :
@@ -74,6 +144,43 @@ def plot_delay \
         xlabel = 'Freq (Hz)'
         if fs == 1.0 :
             xlabel = '$\\Omega$'
+
+    # FIXME: Needs further check
+    #if not d_in_samples :
+    #    d = d / (2 * np.pi)
+
+    # If constraints given, asume the first are the upper
+    # Move curve to upper bound
+    bounds = []
+    if constraints :
+        for c in constraints :
+            r = []
+            for xy1, xy2 in pairwise (zip (c [0], c [1])) :
+                if xy1 [0] == xy2 [0] :
+                    continue
+                r.append (Filter_Bound (xy1 [0], xy2 [0], xy1 [1], xy2 [1]))
+            bounds.append (Filter_Bounds (* r))
+        delta = None
+        for x, y in zip (w, d) :
+            try :
+                yb = bounds [0].interpolate (x)
+            except ValueError :
+                break
+            dd = y - yb
+            if delta is None or dd > delta :
+                delta = dd
+        for b in bounds :
+            b.add_offset (delta)
+            ax1.plot (b.x * fs / (2 * np.pi), b.y, 'g')
+        if auto_ylimit and not ymin and not ymax :
+            miny = min (bounds [-1].y)
+            maxy = max (bounds [0].y)
+            dif  = (maxy - miny) * 2
+            miny -= dif / 2
+            maxy += dif / 2
+            ymin = miny
+            ymax = maxy
+
     plt.plot (w, d, 'b')
     plt.ylabel ('Delay', color = 'b')
     plt.xlabel (xlabel)
