@@ -84,7 +84,7 @@ class Filter_Opt (pga.PGA, autosuper) :
         self.udb = Filter_Bounds \
             ( Filter_Bound (0.0,     0.04938, 0.01,  0.025)
             , Filter_Bound (0.04938, 0.2716,  0.025, 0.025, 17)
-            , Filter_Bound (0.2716,  0.3334,  0.05,  0.05)
+            , Filter_Bound (0.2716,  0.3334,  0.05,  0.05, 11)
             , Filter_Bound (0.3334,  0.395, -12,   -12)
             , Filter_Bound (0.395,   0.5,   -40,   -40, 17)
             )
@@ -110,13 +110,6 @@ class Filter_Opt (pga.PGA, autosuper) :
             ]
         fir_w, self.fir_h = signal.freqz (self.fir, [1.0], self.dbx)
         self.a0 = 0.00390625
-        #print (self.dbx)
-        #print (self.udb.x)
-        #print (self.udb.y)
-        #print (self.ldb.x)
-        #print (self.ldb.y)
-        #sys.exit (23)
-        #print (self.delay_x)
     # end def __init__
 
     def phenotype (self, p, pop) :
@@ -133,12 +126,12 @@ class Filter_Opt (pga.PGA, autosuper) :
 
     def evaluate (self, p, pop) :
         zeros, poles, b, a = self.phenotype (p, pop)
-#        wgd, gd = signal.group_delay ((b, a), self.delay_x)
+        wgd, gd = signal.group_delay ((b, a), self.delay_x)
         w, h    = signal.freqz       (b, a, self.dbx)
         hf      = self.fir_h * h
         db      = 20 * np.log10 (abs (hf))
         dbdict  = dict ((x, y) for x, y in zip (self.dbx, db))
-#        dldict  = dict ((x, y) for x, y in zip (self.delay_x, gd))
+        dldict  = dict ((x, y) for x, y in zip (self.delay_x, gd))
 
         ev = 0.0
         for xb, yb in self.udb :
@@ -147,18 +140,17 @@ class Filter_Opt (pga.PGA, autosuper) :
         for xb, yb in self.ldb :
             if dbdict [xb] < yb :
                 ev += (dbdict [xb] - yb) ** 2
-#        delaydelta = None
-#        # Shift the curve so that it touches the upper delay delta
-#        for xb, yb in self.udelay :
-#            delta = dldict [xb] - yb
-#            if delaydelta is None or delta > delaydelta :
-#                delaydelta = delta
-#        # Check where the curve underflows the lower delay delta
-#        for xb, yb in self.ldelay :
-#            if dldict [xb] - delta < yb :
-#                #ev += (dldict [xb] - delta - yb) ** 2
-#                pass
-        #print (ev)
+        delaydelta = None
+        # Shift the curve so that it touches the upper delay delta
+        for xb, yb in self.udelay :
+            delta = dldict [xb] - (yb / 2 * np.pi)
+            if delaydelta is None or delta > delaydelta :
+                delaydelta = delta
+        # Check where the curve underflows the lower delay delta
+        for xb, yb in self.ldelay :
+            d = yb / (2 * np.pi)
+            if dldict [xb] - delaydelta < d :
+                ev += (dldict [xb] - delaydelta - d) ** 2
         return ev
     # end def evaluate
 
@@ -211,6 +203,8 @@ class Filter_Opt (pga.PGA, autosuper) :
         #pole_zero_plot (poles, zeros)
         #w, h = signal.freqz (b, a)
         #plot_response (w, h, fs = 1.0)
+        #wgd, gd = signal.group_delay ((b, a), self.delay_x)
+        #plot_delay (wgd, gd)
         #import pdb; pdb.set_trace ()
         #e = self.evaluate (p, pop)
     # end def print_string
