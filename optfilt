@@ -5,14 +5,16 @@ from scipy      import signal
 import pga
 import sys
 import numpy as np
+from rsclib.autosuper import autosuper
+from filterplot import plot_response, plot_delay, pole_zero_plot
 
 class Filter_Bound (object) :
 
-    def __init__ (self, xmin, xmax, ymin, ymax, n = 6, use_cos = True) :
+    def __init__ (self, xmin, xmax, ymin, ymax, n = 6, use_cos = False) :
         a = np.array (range (n)) / (n - 1.0)
         if use_cos :
             a = np.cos (a * np.pi) / -2.0 + 0.5
-        self.x = a * (xmax - xmin) + xmin
+        self.x = (a * (xmax - xmin) + xmin) * 2 * np.pi
         self.y = a * (ymax - ymin) + ymin
     # end def __init__
 
@@ -45,7 +47,7 @@ class Filter_Bounds (object) :
 
 # end class Filter_Bounds
 
-class Filter_Opt (pga.PGA) :
+class Filter_Opt (pga.PGA, autosuper) :
     """ Optimize a filter with differential evolution
     """
 
@@ -63,6 +65,7 @@ class Filter_Opt (pga.PGA) :
             , pop_size                    = popsize
             , num_replace                 = popsize
             , print_options               = [pga.PGA_REPORT_STRING]
+            #, print_frequency             = 200
             , init                        = ini
             , select_type                 = pga.PGA_SELECT_LINEAR
             , pop_replace_type            = pga.PGA_POPREPL_PAIRWISE_BEST
@@ -78,27 +81,6 @@ class Filter_Opt (pga.PGA) :
         self.x  = []
         self.yu = []
         self.yl = []
-        #r6  = np.array (range     (6)) /  5.
-        #r5  = np.array (range (1,  6)) /  5.
-        #r18 = np.array (range (1, 18)) / 17.
-        #self.x .append (r6  * 0.04938)
-        #self.yu.append (r6  * ( 0.025  -  0.01)    + 0.01)
-        #self.yl.append (r6  * (-0.025  - -0.01)    - 0.01)
-        #self.x .append (r18 * ( 0.2716 -  0.04938) + 0.04938)
-        #self.yu.append (r18 * 0                    + 0.025)
-        #self.yl.append (r18 * 0                    - 0.025)
-        #self.x .append (r5  * ( 0.284  -  0.2716)  + 0.2716)
-        #self.yu.append (r5  * 0                    + 0.05)
-        #self.yl.append (r5  * 0                    - 0.05)
-        #self.x .append (r5  * ( 0.3334 -  0.284)   + 0.284)
-        #self.yu.append (r5  * 0                    + 0.05)
-        #self.x .append (r5  * ( 0.395  -  0.3334)  + 0.3334)
-        #self.yu.append (r5  * 0                    - 12.0)
-        #self.x .append (r18 * ( 0.5    -  0.395)   + 0.395)
-        #self.yu.append (r18 * 0                    - 40.0)
-        #self.dbx  = np.concatenate (self.x) * 2.0 * np.pi
-        #self.dbyu = np.concatenate (self.yu)
-        #self.dbyl = np.concatenate (self.yl)
         self.udb = Filter_Bounds \
             ( Filter_Bound (0.0,     0.04938, 0.01,  0.025)
             , Filter_Bound (0.04938, 0.2716,  0.025, 0.025, 17)
@@ -108,7 +90,7 @@ class Filter_Opt (pga.PGA) :
             )
         self.ldb = Filter_Bounds \
             ( Filter_Bound (0.0,     0.04938, -0.01,  -0.025)
-            , Filter_Bound (0.04938, 0.2716,  -0.025, -0.025)
+            , Filter_Bound (0.04938, 0.2716,  -0.025, -0.025, 17)
             , Filter_Bound (0.2716,  0.284,   -0.05,  -0.05)
             , is_lower = True
             )
@@ -122,56 +104,60 @@ class Filter_Opt (pga.PGA) :
             )
         self.delay_x = list (sorted (set (np.concatenate
             ((self.udelay.x, self.ldelay.x)))))
-        #print (self.dbx)
-        #print (self.udb.x)
-        #print (self.udb.y)
-        #print (self.ldb.x)
-        #print (self.ldb.y)
         self.fir  = \
             [-0.033271, -0.019816, 0.169865, 0.415454
             , 0.415454, 0.169865, -0.019816, -0.033271
             ]
         fir_w, self.fir_h = signal.freqz (self.fir, [1.0], self.dbx)
         self.a0 = 0.00390625
+        #print (self.dbx)
+        #print (self.udb.x)
+        #print (self.udb.y)
+        #print (self.ldb.x)
+        #print (self.ldb.y)
+        #sys.exit (23)
+        #print (self.delay_x)
     # end def __init__
 
-    def evaluate (self, p, pop) :
+    def phenotype (self, p, pop) :
         ga    = self.get_allele
         zeros = [ga (p, pop, k)    * np.e ** (2j * np.pi * ga (p, pop, k+5))
                  for k in range (5)]
         poles = [ga (p, pop, k+10) * np.e ** (2j * np.pi * ga (p, pop, k+14))
                  for k in range (4)]
-        #print ("zeros:", zeros)
-        #print ("poles:", poles)
         self.update_conjugate_complex (zeros)
         self.update_conjugate_complex (poles)
         (b, a)  = signal.zpk2tf (zeros, poles, self.a0)
-        wgd, gd = signal.group_delay ((b, a), self.delay_x)
+        return (zeros, poles, b, a)
+    # end def phenotype
+
+    def evaluate (self, p, pop) :
+        zeros, poles, b, a = self.phenotype (p, pop)
+#        wgd, gd = signal.group_delay ((b, a), self.delay_x)
         w, h    = signal.freqz       (b, a, self.dbx)
-        #filterplot.pole_zero_plot (poles, zeros)
         hf      = self.fir_h * h
         db      = 20 * np.log10 (abs (hf))
         dbdict  = dict ((x, y) for x, y in zip (self.dbx, db))
-        dldict  = dict ((x, y) for x, y in zip (self.delay_x, gd))
+#        dldict  = dict ((x, y) for x, y in zip (self.delay_x, gd))
 
-        ev      = 0.0
+        ev = 0.0
         for xb, yb in self.udb :
             if dbdict [xb] > yb :
                 ev += (dbdict [xb] - yb) ** 2
         for xb, yb in self.ldb :
             if dbdict [xb] < yb :
                 ev += (dbdict [xb] - yb) ** 2
-        delaydelta = None
-        # Shift the curve so that it touches the upper delay delta
-        for xb, yb in self.udelay :
-            delta = dldict [xb] - yb
-            if delaydelta is None or delta > delaydelta :
-                delaydelta = delta
-        # Check where the curve underflows the lower delay delta
-        for xb, yb in self.ldelay :
-            if dldict [xb] - delta < yb :
-                #ev += (dldict [xb] - delta - yb) ** 2
-                pass
+#        delaydelta = None
+#        # Shift the curve so that it touches the upper delay delta
+#        for xb, yb in self.udelay :
+#            delta = dldict [xb] - yb
+#            if delaydelta is None or delta > delaydelta :
+#                delaydelta = delta
+#        # Check where the curve underflows the lower delay delta
+#        for xb, yb in self.ldelay :
+#            if dldict [xb] - delta < yb :
+#                #ev += (dldict [xb] - delta - yb) ** 2
+#                pass
         #print (ev)
         return ev
     # end def evaluate
@@ -188,6 +174,46 @@ class Filter_Opt (pga.PGA) :
         n2 = [k.conjugate () for k in nums if k.imag]
         nums.extend (n2)
     # end def update_conjugate_complex
+
+    def print_string (self, f, p, pop) :
+        zeros, poles, b, a = self.phenotype (p, pop)
+        print ('params.append \\', file = f)
+
+        print (" ([ ", file = f, end = '')
+        for k in range (5) :
+            e = ', '
+            if k == 4 :
+                e = '\n'
+            print ("%1.8f" % self.get_allele (p, pop, k), file = f, end = e)
+
+        print (" ,  ", file = f, end = '')
+        for k in range (5) :
+            e = ', '
+            if k == 4 :
+                e = '\n'
+            print ("%1.8f" % self.get_allele (p, pop, k+5), file = f, end = e)
+
+        print (" ,  ", file = f, end = '')
+        for k in range (4) :
+            e = ', '
+            if k == 3 :
+                e = '\n'
+            print ("%1.8f" % self.get_allele (p, pop, k+10), file = f, end = e)
+
+        print (" ,  ", file = f, end = '')
+        for k in range (4) :
+            e = ', '
+            if k == 3 :
+                e = '\n'
+            print ("%1.8f" % self.get_allele (p, pop, k+14), file = f, end = e)
+        print (" ])", file = f)
+        self.__super.print_string (f, p, pop)
+        #pole_zero_plot (poles, zeros)
+        #w, h = signal.freqz (b, a)
+        #plot_response (w, h, fs = 1.0)
+        #import pdb; pdb.set_trace ()
+        #e = self.evaluate (p, pop)
+    # end def print_string
 
 # end class Filter_Opt
 
