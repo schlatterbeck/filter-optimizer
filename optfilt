@@ -1,0 +1,196 @@
+#!/usr/bin/python3
+
+from __future__ import print_function
+from scipy      import signal
+import pga
+import sys
+import numpy as np
+
+class Filter_Bound (object) :
+
+    def __init__ (self, xmin, xmax, ymin, ymax, n = 6, use_cos = True) :
+        a = np.array (range (n)) / (n - 1.0)
+        if use_cos :
+            a = np.cos (a * np.pi) / -2.0 + 0.5
+        self.x = a * (xmax - xmin) + xmin
+        self.y = a * (ymax - ymin) + ymin
+    # end def __init__
+
+# end class Filter_Bound
+
+class Filter_Bounds (object) :
+
+    def __init__ (self, * bounds, is_lower = False) :
+        self.is_lower = is_lower
+        self.by_x = {}
+        for b in bounds :
+            for x, y in zip (b.x, b.y) :
+                if x in self.by_x :
+                    if self.is_lower :
+                        if y > self.by_x [x] :
+                            self.by_x [x] = y
+                    else :
+                        if y < self.by_x [x] :
+                            self.by_x [x] = y
+                else :
+                    self.by_x [x] = y
+        self.x = np.array (sorted (self.by_x))
+        self.y = np.array ([self.by_x [i] for i in self.x])
+    # end def __init__
+
+    def __iter__ (self) :
+        for x, y in zip (self.x, self.y) :
+            yield (x, y)
+    # end def __iter__
+
+# end class Filter_Bounds
+
+class Filter_Opt (pga.PGA) :
+    """ Optimize a filter with differential evolution
+    """
+
+    def __init__ (self) :
+        ini = \
+            [ (0, 5),     (0, 5),     (0, 5),     (0, 5),     (0, 5)
+            , (0, 0.5),   (0, 0.5),   (0, 0.5),   (0, 0.5),   (0, 0.5)
+            , (0, 0.999), (0, 0.999), (0, 0.999), (0, 0.999)
+            , (0, 0.5),   (0, 0.5),   (0, 0.5),   (0, 0.5)
+            ]
+        popsize = 300
+        super (self.__class__, self).__init__ \
+            ( float, 18
+            , maximize                    = False
+            , pop_size                    = popsize
+            , num_replace                 = popsize
+            , print_options               = [pga.PGA_REPORT_STRING]
+            , init                        = ini
+            , select_type                 = pga.PGA_SELECT_LINEAR
+            , pop_replace_type            = pga.PGA_POPREPL_PAIRWISE_BEST
+            , mutation_bounce_back        = True
+            , mutation_only               = True
+            , mutation_type               = pga.PGA_MUTATION_DE
+            , DE_variant                  = pga.PGA_DE_VARIANT_BEST
+            , DE_crossover_prob           = 1.0
+            , DE_jitter                   = 0.001
+            , DE_scale_factor             = 0.85 - (popsize * 0.0005)
+            , random_seed                 = 42
+            )
+        self.x  = []
+        self.yu = []
+        self.yl = []
+        #r6  = np.array (range     (6)) /  5.
+        #r5  = np.array (range (1,  6)) /  5.
+        #r18 = np.array (range (1, 18)) / 17.
+        #self.x .append (r6  * 0.04938)
+        #self.yu.append (r6  * ( 0.025  -  0.01)    + 0.01)
+        #self.yl.append (r6  * (-0.025  - -0.01)    - 0.01)
+        #self.x .append (r18 * ( 0.2716 -  0.04938) + 0.04938)
+        #self.yu.append (r18 * 0                    + 0.025)
+        #self.yl.append (r18 * 0                    - 0.025)
+        #self.x .append (r5  * ( 0.284  -  0.2716)  + 0.2716)
+        #self.yu.append (r5  * 0                    + 0.05)
+        #self.yl.append (r5  * 0                    - 0.05)
+        #self.x .append (r5  * ( 0.3334 -  0.284)   + 0.284)
+        #self.yu.append (r5  * 0                    + 0.05)
+        #self.x .append (r5  * ( 0.395  -  0.3334)  + 0.3334)
+        #self.yu.append (r5  * 0                    - 12.0)
+        #self.x .append (r18 * ( 0.5    -  0.395)   + 0.395)
+        #self.yu.append (r18 * 0                    - 40.0)
+        #self.dbx  = np.concatenate (self.x) * 2.0 * np.pi
+        #self.dbyu = np.concatenate (self.yu)
+        #self.dbyl = np.concatenate (self.yl)
+        self.udb = Filter_Bounds \
+            ( Filter_Bound (0.0,     0.04938, 0.01,  0.025)
+            , Filter_Bound (0.04938, 0.2716,  0.025, 0.025, 17)
+            , Filter_Bound (0.2716,  0.3334,  0.05,  0.05)
+            , Filter_Bound (0.3334,  0.395, -12,   -12)
+            , Filter_Bound (0.395,   0.5,   -40,   -40, 17)
+            )
+        self.ldb = Filter_Bounds \
+            ( Filter_Bound (0.0,     0.04938, -0.01,  -0.025)
+            , Filter_Bound (0.04938, 0.2716,  -0.025, -0.025)
+            , Filter_Bound (0.2716,  0.284,   -0.05,  -0.05)
+            , is_lower = True
+            )
+        self.dbx = list (sorted (set (np.concatenate
+            ((self.ldb.x, self.udb.x)))))
+        self.udelay = Filter_Bounds \
+            (Filter_Bound (0.0, 0.284,  0.10125,  0.30375, 17))
+        self.ldelay = Filter_Bounds \
+            ( Filter_Bound (0.0, 0.284, -0.10125, -0.30375, 17)
+            , is_lower = True
+            )
+        self.delay_x = list (sorted (set (np.concatenate
+            ((self.udelay.x, self.ldelay.x)))))
+        #print (self.dbx)
+        #print (self.udb.x)
+        #print (self.udb.y)
+        #print (self.ldb.x)
+        #print (self.ldb.y)
+        self.fir  = \
+            [-0.033271, -0.019816, 0.169865, 0.415454
+            , 0.415454, 0.169865, -0.019816, -0.033271
+            ]
+        fir_w, self.fir_h = signal.freqz (self.fir, [1.0], self.dbx)
+        self.a0 = 0.00390625
+    # end def __init__
+
+    def evaluate (self, p, pop) :
+        ga    = self.get_allele
+        zeros = [ga (p, pop, k)    * np.e ** (2j * np.pi * ga (p, pop, k+5))
+                 for k in range (5)]
+        poles = [ga (p, pop, k+10) * np.e ** (2j * np.pi * ga (p, pop, k+14))
+                 for k in range (4)]
+        #print ("zeros:", zeros)
+        #print ("poles:", poles)
+        self.update_conjugate_complex (zeros)
+        self.update_conjugate_complex (poles)
+        (b, a)  = signal.zpk2tf (zeros, poles, self.a0)
+        wgd, gd = signal.group_delay ((b, a), self.delay_x)
+        w, h    = signal.freqz       (b, a, self.dbx)
+        #filterplot.pole_zero_plot (poles, zeros)
+        hf      = self.fir_h * h
+        db      = 20 * np.log10 (abs (hf))
+        dbdict  = dict ((x, y) for x, y in zip (self.dbx, db))
+        dldict  = dict ((x, y) for x, y in zip (self.delay_x, gd))
+
+        ev      = 0.0
+        for xb, yb in self.udb :
+            if dbdict [xb] > yb :
+                ev += (dbdict [xb] - yb) ** 2
+        for xb, yb in self.ldb :
+            if dbdict [xb] < yb :
+                ev += (dbdict [xb] - yb) ** 2
+        delaydelta = None
+        # Shift the curve so that it touches the upper delay delta
+        for xb, yb in self.udelay :
+            delta = dldict [xb] - yb
+            if delaydelta is None or delta > delaydelta :
+                delaydelta = delta
+        # Check where the curve underflows the lower delay delta
+        for xb, yb in self.ldelay :
+            if dldict [xb] - delta < yb :
+                #ev += (dldict [xb] - delta - yb) ** 2
+                pass
+        #print (ev)
+        return ev
+    # end def evaluate
+
+    def stop_cond (self) :
+        best = self.get_best_index (pga.PGA_OLDPOP)
+        if self.get_evaluation (best, pga.PGA_OLDPOP) == 0 :
+            return True
+        return self.check_stopping_conditions ()
+    # end def stop_cond
+
+    def update_conjugate_complex (self, nums) :
+        """ Modify nums in-place to add conjugate complex numbers """
+        n2 = [k.conjugate () for k in nums if k.imag]
+        nums.extend (n2)
+    # end def update_conjugate_complex
+
+# end class Filter_Opt
+
+if __name__ == '__main__' :
+    pg = Filter_Opt ()
+    pg.run ()

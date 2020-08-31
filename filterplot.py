@@ -3,7 +3,6 @@
 from scipy import signal
 import matplotlib.pyplot as plt
 import numpy as np
-get_ipython().magic('matplotlib inline')
 
 def plot_response \
     ( w, h
@@ -12,6 +11,7 @@ def plot_response \
     , logx  = False, logy = True
     , xmin  = None,  xmax = None
     , ymin  = None,  ymax = None
+    , constraints = []
     ) :
     fig = plt.figure ()
     ax1 = fig.add_subplot (111)
@@ -30,6 +30,8 @@ def plot_response \
         xlabel = 'Freq (Hz)'
         if fs == 1.0 :
             xlabel = '$\\Omega$'
+    for x, y in constraints :
+        ax1.plot (x, y, 'g')
     if logy :
         ax1.plot (w, 20 * np.log10 (abs (h)), 'b')
         plt.ylabel ('Amplitude (dB)', color = 'b')
@@ -84,7 +86,7 @@ def plot_delay \
     plt.show ()
 # end def plot_delay
 
-def pole_zero_plot (poles, zeros, limit = 1e6, title = '') :
+def pole_zero_plot (poles, zeros, limit = 1e6, title = '', show_uc = True) :
     fig = plt.figure ()
     ax1 = fig.add_subplot (111)
     poles = np.array (poles)
@@ -97,8 +99,12 @@ def pole_zero_plot (poles, zeros, limit = 1e6, title = '') :
     m  = max (m1, m2) + 1
     if m > limit :
         m = limit
-    plt.plot(np.real (zeros), np.imag (zeros), 'ob')
-    plt.plot(np.real (poles), np.imag (poles), 'xr')
+    if show_uc :
+        c1 = plt.Circle \
+            ((0, 0), 1, color = 'black', fill = False, linewidth = 0.25)
+        ax1.add_artist (c1)
+    ax1.plot (np.real (zeros), np.imag (zeros), 'ob')
+    ax1.plot (np.real (poles), np.imag (poles), 'xr')
     plt.legend (['Zeros', 'Poles'], loc=2)
     t = 'Pole / Zero Plot'
     if title :
@@ -109,6 +115,7 @@ def pole_zero_plot (poles, zeros, limit = 1e6, title = '') :
     plt.grid()
     plt.xlim (-m, m)
     plt.ylim (-m, m)
-    plt.gca ().set_aspect ('equal', adjustable='box')
+    #plt.gca ().set_aspect ('equal', adjustable='box')
+    ax1.set_aspect ('equal', adjustable='box')
     plt.show()
 # end def pole_zero_plot
