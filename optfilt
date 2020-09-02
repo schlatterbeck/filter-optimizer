@@ -1,32 +1,45 @@
 #!/usr/bin/python3
 
 from __future__ import print_function
+from argparse   import ArgumentParser
 from scipy      import signal
 from bisect     import bisect
 import pga
 import sys
 import numpy as np
 from rsclib.autosuper import autosuper
-from filterplot import plot_response, plot_delay, pole_zero_plot
 from filterplot import Filter_Bound, Filter_Bounds
 
 class Filter_Opt (pga.PGA, autosuper) :
     """ Optimize a filter with differential evolution
     """
 
-    def __init__ (self) :
+    def __init__ (self, args) :
+        self.neval  = 0
+        self.args   = args
+        self.npoles = 4
+        self.nzeros = 5
+        # parameters in the form radius, angle
+        # first the zeros then the poles
         ini = \
-            [ (0, 5),     (0, 5),     (0, 5),     (0, 5),     (0, 5)
-            , (0, 0.5),   (0, 0.5),   (0, 0.5),   (0, 0.5),   (0, 0.5)
-            , (0, 0.999), (0, 0.999), (0, 0.999), (0, 0.999)
-            , (0, 0.5),   (0, 0.5),   (0, 0.5),   (0, 0.5)
+            [ (0, 5),     (0, 0.5)
+            , (0, 5),     (0, 0.5)
+            , (0, 5),     (0, 0.5)
+            , (0, 5),     (0, 0.5)
+            , (0, 5),     (0, 0.5)
+            , (0, 0.999), (0, 0.5)
+            , (0, 0.999), (0, 0.5)
+            , (0, 0.999), (0, 0.5)
+            , (0, 0.999), (0, 0.5)
             ]
-        popsize = 300
+        de_cross_type = pga.PGA_DE_CROSSOVER_BIN
+        if self.args.use_exponential_crossover :
+            de_cross_type = pga.PGA_DE_CROSSOVER_EXP
         super (self.__class__, self).__init__ \
-            ( float, 18
+            ( float, 2 * (self.npoles + self.nzeros)
             , maximize                    = False
-            , pop_size                    = popsize
-            , num_replace                 = popsize
+            , pop_size                    = self.args.popsize
+            , num_replace                 = self.args.popsize
             , print_options               = [pga.PGA_REPORT_STRING]
             #, print_frequency             = 200
             , init                        = ini
@@ -38,8 +51,9 @@ class Filter_Opt (pga.PGA, autosuper) :
             , DE_variant                  = pga.PGA_DE_VARIANT_BEST
             , DE_crossover_prob           = 1.0
             , DE_jitter                   = 0.001
-            , DE_scale_factor             = 0.85 - (popsize * 0.0005)
-            , random_seed                 = 42
+            , DE_scale_factor             = 0.85 - (self.args.popsize * 0.0005)
+            , DE_crossover_type           = de_cross_type
+            , random_seed                 = args.random_seed
             )
         self.x  = []
         self.yu = []
@@ -76,10 +90,13 @@ class Filter_Opt (pga.PGA, autosuper) :
     # end def __init__
 
     def phenotype (self, p, pop) :
-        ga    = self.get_allele
-        zeros = [ga (p, pop, k)    * np.e ** (2j * np.pi * ga (p, pop, k+5))
+        def ga (i) :
+            return self.get_allele (p, pop, i)
+        # pole offset in gene
+        po = 2 * self.nzeros
+        zeros = [ga (2*k)    * np.e ** (2j * np.pi * ga (2*k+1))
                  for k in range (5)]
-        poles = [ga (p, pop, k+10) * np.e ** (2j * np.pi * ga (p, pop, k+14))
+        poles = [ga (2*k+po) * np.e ** (2j * np.pi * ga (2*k+po+1))
                  for k in range (4)]
         self.update_conjugate_complex (zeros)
         self.update_conjugate_complex (poles)
@@ -88,6 +105,7 @@ class Filter_Opt (pga.PGA, autosuper) :
     # end def phenotype
 
     def evaluate (self, p, pop) :
+        self.neval += 1
         zeros, poles, b, a = self.phenotype (p, pop)
         wgd, gd = signal.group_delay ((b, a), self.delay_x)
         w, h    = signal.freqz       (b, a, self.dbx)
@@ -130,50 +148,95 @@ class Filter_Opt (pga.PGA, autosuper) :
         nums.extend (n2)
     # end def update_conjugate_complex
 
+    def pre_eval (self, pop) :
+        if not self.args.sort_population :
+            return
+        ga  = self.get_allele
+        # Unpack gene into pairs (angle, radius)
+        for p in range (self.pop_size) :
+            zeros = \
+                [( ga (p, pop, 2*i + 1)
+                 , ga (p, pop, 2*i)
+                 )
+                 for i in range (self.nzeros)
+                ]
+            poles = \
+                [( ga (p, pop, 2*i + 2*self.nzeros + 1)
+                 , ga (p, pop, 2*i + 2*self.nzeros)
+                 )
+                 for i in range (self.npoles)
+                ]
+            # Sort by angle/radius
+            zeros = list (sorted (zeros))
+            poles = list (sorted (poles))
+            # re-pack into gene
+            for i in range (self.nzeros) :
+                self.set_allele (p, pop, 2*i,   zeros [i][1])
+                self.set_allele (p, pop, 2*i+1, zeros [i][0])
+            for i in range (self.npoles) :
+                self.set_allele (p, pop, 2*i + 2*self.nzeros,   poles [i][1])
+                self.set_allele (p, pop, 2*i + 2*self.nzeros+1, poles [i][0])
+    # end def pre_eval
+
+    def _print (self, f, p, pop, n, offset) :
+        for k in range (n) :
+            e = ', '
+            if k == n - 1 :
+                e = '\n'
+            a = self.get_allele (p, pop, 2*k+offset)
+            print ("%1.8f" % a, file = f, end = e)
+    # end def _print
+
     def print_string (self, f, p, pop) :
-        zeros, poles, b, a = self.phenotype (p, pop)
-        print ('params.append \\', file = f)
-
-        print (" ([ ", file = f, end = '')
-        for k in range (5) :
-            e = ', '
-            if k == 4 :
-                e = '\n'
-            print ("%1.8f" % self.get_allele (p, pop, k), file = f, end = e)
-
-        print (" ,  ", file = f, end = '')
-        for k in range (5) :
-            e = ', '
-            if k == 4 :
-                e = '\n'
-            print ("%1.8f" % self.get_allele (p, pop, k+5), file = f, end = e)
-
-        print (" ,  ", file = f, end = '')
-        for k in range (4) :
-            e = ', '
-            if k == 3 :
-                e = '\n'
-            print ("%1.8f" % self.get_allele (p, pop, k+10), file = f, end = e)
-
-        print (" ,  ", file = f, end = '')
-        for k in range (4) :
-            e = ', '
-            if k == 3 :
-                e = '\n'
-            print ("%1.8f" % self.get_allele (p, pop, k+14), file = f, end = e)
-        print (" ])", file = f)
+        #zeros, poles, b, a = self.phenotype (p, pop)
+        print ("Iter: %s Evals: %s" % (self.GA_iter, self.neval), file = f)
+        #print ('params.append \\', file = f)
+        #print (" ([ ", file = f, end = '')
+        #self._print (f, p, pop, self.nzeros, 0)
+        #print (" ,  ", file = f, end = '')
+        #self._print (f, p, pop, self.nzeros, 1)
+        #print (" ,  ", file = f, end = '')
+        #self._print (f, p, pop, self.npoles, 2 * self.nzeros)
+        #print (" ,  ", file = f, end = '')
+        #self._print (f, p, pop, self.npoles, 2 * self.nzeros + 1)
+        #print (" ])", file = f)
+        f.flush ()
         self.__super.print_string (f, p, pop)
-        #pole_zero_plot (poles, zeros)
-        #w, h = signal.freqz (b, a)
-        #plot_response (w, h, fs = 1.0)
-        #wgd, gd = signal.group_delay ((b, a), self.delay_x)
-        #plot_delay (wgd, gd)
-        #import pdb; pdb.set_trace ()
-        #e = self.evaluate (p, pop)
+        f.flush ()
     # end def print_string
 
 # end class Filter_Opt
 
-if __name__ == '__main__' :
-    pg = Filter_Opt ()
+def main () :
+    cmd = ArgumentParser ()
+    cmd.add_argument \
+        ( '-p', '--popsize'
+        , type    = int
+        , help    = "Population size, default=%(default)s"
+        , default = 300
+        )
+    cmd.add_argument \
+        ( '-R', '--random-seed'
+        , type    = int
+        , help    = "Random number seed, default=%(default)s"
+        , default = 42
+        )
+    cmd.add_argument \
+        ( '-s', '--sort-population'
+        , help    = "Sort population by angle/radius"
+        , default = False
+        , action  = 'store_true'
+        )
+    cmd.add_argument \
+        ( '-e', '--use-exponential-crossover'
+        , help    = "Use exp crossover (instead of bin)"
+        , default = False
+        , action  = 'store_true'
+        )
+    args = cmd.parse_args ()
+    pg = Filter_Opt (args)
     pg.run ()
+# end def main
+
+if __name__ == '__main__' :
+    main ()
