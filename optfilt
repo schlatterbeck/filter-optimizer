@@ -21,20 +21,22 @@ class Filter_Opt (pga.PGA, autosuper) :
         self.nzeros = 5
         # parameters in the form radius, angle
         # first the zeros then the poles
-        ini = \
-            [ (0, 5),     (0, 0.5)
-            , (0, 5),     (0, 0.5)
-            , (0, 5),     (0, 0.5)
-            , (0, 5),     (0, 0.5)
-            , (0, 5),     (0, 0.5)
-            , (0, 0.999), (0, 0.5)
-            , (0, 0.999), (0, 0.5)
-            , (0, 0.999), (0, 0.5)
-            , (0, 0.999), (0, 0.5)
-            ]
+        # All angles in the range   [0, 0.5]
+        # zeros radius in the range [0, 5]
+        # poles radius in the range [0, 0.999]
+        ini = []
+        for k in range (self.nzeros) :
+            ini.append ((0, 5))
+            ini.append ((0, 0.5))
+        for k in range (self.npoles) :
+            ini.append ((0, 0.999))
+            ini.append ((0, 0.5))
         de_cross_type = pga.PGA_DE_CROSSOVER_BIN
         if self.args.use_exponential_crossover :
             de_cross_type = pga.PGA_DE_CROSSOVER_EXP
+        variant = getattr (pga, 'PGA_DE_VARIANT_' \
+                + self.args.de_variant.upper ())
+        f = self.args.scale_factor - (self.args.popsize * 0.0005)
         super (self.__class__, self).__init__ \
             ( float, 2 * (self.npoles + self.nzeros)
             , maximize                    = False
@@ -48,10 +50,10 @@ class Filter_Opt (pga.PGA, autosuper) :
             , mutation_bounce_back        = True
             , mutation_only               = True
             , mutation_type               = pga.PGA_MUTATION_DE
-            , DE_variant                  = pga.PGA_DE_VARIANT_BEST
+            , DE_variant                  = variant
             , DE_crossover_prob           = 1.0
             , DE_jitter                   = 0.001
-            , DE_scale_factor             = 0.85 - (self.args.popsize * 0.0005)
+            , DE_scale_factor             = f
             , DE_crossover_type           = de_cross_type
             , random_seed                 = args.random_seed
             )
@@ -95,9 +97,9 @@ class Filter_Opt (pga.PGA, autosuper) :
         # pole offset in gene
         po = 2 * self.nzeros
         zeros = [ga (2*k)    * np.e ** (2j * np.pi * ga (2*k+1))
-                 for k in range (5)]
+                 for k in range (self.nzeros)]
         poles = [ga (2*k+po) * np.e ** (2j * np.pi * ga (2*k+po+1))
-                 for k in range (4)]
+                 for k in range (self.npoles)]
         self.update_conjugate_complex (zeros)
         self.update_conjugate_complex (poles)
         (b, a)  = signal.zpk2tf (zeros, poles, self.a0)
@@ -210,6 +212,24 @@ class Filter_Opt (pga.PGA, autosuper) :
 def main () :
     cmd = ArgumentParser ()
     cmd.add_argument \
+        ( '-d', '--de-variant'
+        , help    = "Variant of DE algorithm, one of rand/best default=%(default)s"
+        , default = 'best'
+        )
+    cmd.add_argument \
+        ( '-e', '--use-exponential-crossover'
+        , help    = "Use exp crossover (instead of bin)"
+        , default = False
+        , action  = 'store_true'
+        )
+    cmd.add_argument \
+        ( '-F', '--scale-factor'
+        , help    = "Base DE scale factor F, default=%(default)s "
+                    "(popsize-dependent part is subtracted)"
+        , default = 0.85
+        , type    = float
+        )
+    cmd.add_argument \
         ( '-p', '--popsize'
         , type    = int
         , help    = "Population size, default=%(default)s"
@@ -224,12 +244,6 @@ def main () :
     cmd.add_argument \
         ( '-s', '--sort-population'
         , help    = "Sort population by angle/radius"
-        , default = False
-        , action  = 'store_true'
-        )
-    cmd.add_argument \
-        ( '-e', '--use-exponential-crossover'
-        , help    = "Use exp crossover (instead of bin)"
         , default = False
         , action  = 'store_true'
         )
