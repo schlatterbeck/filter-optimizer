@@ -37,10 +37,10 @@ def plot_neval (rbk) :
         y1.append (r ['mean'])
         y2.append ((r ['success']) / (r ['success'] + r ['fail']) * 100)
         nev.append (r ['neval'])
-    #ax1.plot (x, y)
-    bp = ax1.boxplot (nev, positions = x, widths = 10)
+    nev = np.array (nev)
+    bp = ax1.boxplot (nev / 1000, positions = x, widths = 10)
     plt.title  ('Evaluations, Successes')
-    plt.ylabel ('Evals', color = bp ['medians'][0].get_color ())
+    plt.ylabel ('Evals (thousands)', color = bp ['medians'][0].get_color ())
     plt.xlabel ('NP')
     ax1.set_xlim (xmin - 10, xmax + 10, auto = True)
     ax2 = ax1.twinx ()
@@ -48,25 +48,6 @@ def plot_neval (rbk) :
     plt.ylabel ('Successes (%)', color = p.get_color ())
     plt.show ()
 # end def plot_neval
-
-def plot_nsuccess (rbk) :
-    x = []
-    y = []
-    for k in rbk :
-        r = rbk [k]
-        if not r ['success'] :
-            continue
-        n = extract_data (k)
-        x.append (n)
-        y.append ((r ['success']) / (r ['success'] + r ['fail']) * 100)
-    fig = plt.figure ()
-    ax1 = fig.add_subplot (111)
-    ax1.plot   (x, y)
-    plt.title  ('Number of successes')
-    plt.ylabel ('Successes (%)')
-    plt.xlabel ('NP')
-    plt.show ()
-# end def plot_nsuccess
 
 result_by_key = {}
 with open (sys.argv [1], 'r')  as f :
@@ -95,5 +76,4 @@ for k in result_by_key :
     if n :
         r ['mean'] = sum (r ['neval']) / n
         r ['stdd']  = sqrt (sum ((r ['neval'] - r ['mean']) ** 2)) / n
-#plot_nsuccess (result_by_key)
 plot_neval    (result_by_key)
