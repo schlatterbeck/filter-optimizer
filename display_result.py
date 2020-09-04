@@ -24,7 +24,7 @@ def plot_neval (rbk) :
     nev  = []
     xmin = 1e6
     xmax = -1
-    for k in rbk :
+    for k in sorted (rbk, key = lambda x : int (x [2])) :
         r = rbk [k]
         if 'mean' not in r :
             continue
@@ -76,4 +76,4 @@ for k in result_by_key :
     if n :
         r ['mean'] = sum (r ['neval']) / n
         r ['stdd']  = sqrt (sum ((r ['neval'] - r ['mean']) ** 2)) / n
-plot_neval    (result_by_key)
+plot_neval (result_by_key)
