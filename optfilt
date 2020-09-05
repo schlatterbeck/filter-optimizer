@@ -39,12 +39,10 @@ class Filter_Opt (pga.PGA, autosuper) :
         f = ( self.args.scale_factor
             - (self.args.popsize * self.args.scale_with_popsize)
             )
-        super (self.__class__, self).__init__ \
-            ( float, 2 * (self.npoles + self.nzeros)
-            , maximize                    = False
+        d = dict \
+            ( maximize                    = False
             , pop_size                    = self.args.popsize
             , num_replace                 = self.args.popsize
-            , max_GA_iter                 = self.args.max_generations
             , print_options               = [pga.PGA_REPORT_STRING]
             #, print_frequency             = 200
             , init                        = ini
@@ -60,6 +58,21 @@ class Filter_Opt (pga.PGA, autosuper) :
             , DE_crossover_type           = de_cross_type
             , random_seed                 = args.random_seed
             )
+        stop = []
+        if self.args.max_generations != 0 :
+            stop.append (pga.PGA_STOP_MAXITER)
+            d ['max_GA_iter'] = self.args.max_generations
+        # Default if no stopping criteria given
+        if not self.args.max_evals and not stop :
+            stop.append (pga.PGA_STOP_MAXITER)
+            d ['max_GA_iter'] = self.args.max_generations
+        # If stop is empty we set max_GA_iter to maxint (signed int!)
+        if stop :
+            d ['stopping_rule_types'] = stop
+        else :
+            d ['max_GA_iter'] = 0x7FFFFFFF
+        super (self.__class__, self).__init__ \
+            (float, 2 * (self.npoles + self.nzeros), **d)
         self.x  = []
         self.yu = []
         self.yl = []
@@ -144,7 +157,7 @@ class Filter_Opt (pga.PGA, autosuper) :
         best = self.get_best_index (pga.PGA_OLDPOP)
         if self.get_evaluation (best, pga.PGA_OLDPOP) == 0 :
             return True
-        if self.args.max_evals and self.neval > self.args.max_evals :
+        if self.args.max_evals and self.neval >= self.args.max_evals :
             return True
         return self.check_stopping_conditions ()
     # end def stop_cond
