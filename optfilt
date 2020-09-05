@@ -36,12 +36,15 @@ class Filter_Opt (pga.PGA, autosuper) :
             de_cross_type = pga.PGA_DE_CROSSOVER_EXP
         variant = getattr (pga, 'PGA_DE_VARIANT_' \
                 + self.args.de_variant.upper ())
-        f = self.args.scale_factor - (self.args.popsize * 0.0005)
+        f = ( self.args.scale_factor
+            - (self.args.popsize * self.args.scale_with_popsize)
+            )
         super (self.__class__, self).__init__ \
             ( float, 2 * (self.npoles + self.nzeros)
             , maximize                    = False
             , pop_size                    = self.args.popsize
             , num_replace                 = self.args.popsize
+            , max_GA_iter                 = self.args.max_generations
             , print_options               = [pga.PGA_REPORT_STRING]
             #, print_frequency             = 200
             , init                        = ini
@@ -141,6 +144,8 @@ class Filter_Opt (pga.PGA, autosuper) :
         best = self.get_best_index (pga.PGA_OLDPOP)
         if self.get_evaluation (best, pga.PGA_OLDPOP) == 0 :
             return True
+        if self.args.max_evals and self.neval > self.args.max_evals :
+            return True
         return self.check_stopping_conditions ()
     # end def stop_cond
 
@@ -223,10 +228,29 @@ def main () :
         , action  = 'store_true'
         )
     cmd.add_argument \
+        ( '-G', '--max-generations'
+        , type    = int
+        , help    = "Maximum number of generations, default=%(default)s"
+        , default = 1000
+        )
+    cmd.add_argument \
         ( '-F', '--scale-factor'
         , help    = "Base DE scale factor F, default=%(default)s "
                     "(popsize-dependent part is subtracted)"
         , default = 0.85
+        , type    = float
+        )
+    cmd.add_argument \
+        ( '-m', '--max-evals'
+        , help    = "Maximum number of evaluations default=%(default)s"
+        , default = 0
+        , type    = int
+        )
+    cmd.add_argument \
+        ( '-P', '--scale-with-popsize'
+        , help    = "Subtract this value * popsize from scale-factor F."
+                    " A value of 0.0005 may be good."
+        , default = 0.0
         , type    = float
         )
     cmd.add_argument \
