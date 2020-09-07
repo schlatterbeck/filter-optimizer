@@ -52,11 +52,11 @@ class Filter_Opt (pga.PGA, autosuper) :
             , mutation_only               = True
             , mutation_type               = pga.PGA_MUTATION_DE
             , DE_variant                  = variant
-            , DE_crossover_prob           = 1.0
+            , DE_crossover_prob           = self.args.crossover_rate
             , DE_jitter                   = 0.001
             , DE_scale_factor             = f
             , DE_crossover_type           = de_cross_type
-            , random_seed                 = args.random_seed
+            , random_seed                 = self.args.random_seed
             )
         stop = []
         if self.args.max_generations != 0 :
@@ -230,8 +230,15 @@ class Filter_Opt (pga.PGA, autosuper) :
 def main () :
     cmd = ArgumentParser ()
     cmd.add_argument \
+        ( '-C', '--crossover-rate'
+        , help    = "Rate of DE crossover, default=%(default)s"
+        , type    = float
+        , default = 1.0
+        )
+    cmd.add_argument \
         ( '-d', '--de-variant'
-        , help    = "Variant of DE algorithm, one of rand/best default=%(default)s"
+        , help    = "Variant of DE algorithm, "
+                    "one of rand/best default=%(default)s"
         , default = 'best'
         )
     cmd.add_argument \

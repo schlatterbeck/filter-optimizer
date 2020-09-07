@@ -16,6 +16,8 @@ class Eval_Data :
         with open (args.filename, 'r')  as f :
             dr = DictReader (f, delimiter = ';')
             key_attributes = dr.fieldnames [:5]
+            if dr.fieldnames [5] == 'Cr' :
+                key_attributes = dr.fieldnames [:6]
             x_axis = None
             self.x_idx = None
             keys = []
@@ -36,6 +38,8 @@ class Eval_Data :
                             )
                 else :
                     keys.append (name)
+            if 'Cr' not in keys and self.x_name != 'Cr' :
+                keys.append ('Cr')
             self.keys = keys = tuple (keys)
             for rec in dr : 
                 rec ['np']    = int (rec ['np'])
@@ -45,6 +49,10 @@ class Eval_Data :
                 rec ['eval']  = float (rec ['eval'])
                 rec ['neval'] = int (rec ['neval'])
                 rec ['iter']  = int (rec ['iter'])
+                if 'Cr' in rec :
+                    rec ['Cr'] = float (rec ['Cr'])
+                else :
+                    rec ['Cr'] = 1.0
 
                 do_continue = False
                 for k in keys :
@@ -77,6 +85,8 @@ class Eval_Data :
                 r ['mean'] = sum (r ['neval']) / n
                 r ['stdd'] = sqrt (sum ((r ['neval'] - r ['mean']) ** 2)) / n
         self.result_by_key = result_by_key
+        if not self.result_by_key :
+            raise ValueError ("No results found")
     # end def __init__
 
     def plot_eval_success (self) :
@@ -115,9 +125,15 @@ class Eval_Data :
                 )
             )
         plt.xlabel (self.x_name)
-        tick = (xmax - xmin) / len (rbk) / 2.
-        bp = ax1.boxplot (nev / 1000, positions = x, widths = tick)
-        plt.ylabel ('Evals (thousands)', color = bp ['medians'][0].get_color ())
+        tick = (xmax - xmin) / len (x) / 2.
+        ml   = 0
+        for r in nev :
+            if ml < len (r) :
+                ml = len (r)
+        if ml :
+            bp = ax1.boxplot (nev / 1000, positions = x, widths = tick)
+            plt.ylabel \
+                ('Evals (thousands)', color = bp ['medians'][0].get_color ())
         ax1.set_xlim (xmin - tick / 2, xmax + tick / 2, auto = True)
         ax2 = ax1.twinx ()
         p, = ax2.plot   (x, y2)
@@ -142,6 +158,13 @@ def main () :
         ( '-c', '--cross'
         , help    = "Crossover type, one of bin/exp, default=%(default)s"
         , default = 'bin'
+        )
+    cmd.add_argument \
+        ( '-C', '--crossover-rate'
+        , help    = "Crossover rate default=%(default)s"
+        , dest    = 'Cr'
+        , type    = float
+        , default = 1.0
         )
     cmd.add_argument \
         ( '-F', '--scale-factor'
