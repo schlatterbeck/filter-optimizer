@@ -6,9 +6,15 @@ from scipy  import signal
 from bisect import bisect_left
 from rsclib.iter_recipes import pairwise
 
+def update_conjugate_complex (numbers) :
+    """ Modify numbers in-place to add conjugate complex numbers"""
+    n2 = [k.conjugate () for k in numbers if k.imag]
+    numbers.extend (n2)
+# end def update_conjugate_complex
+
 class Filter_Bound (object) :
 
-    def __init__ (self, xmin, xmax, ymin, ymax, n = 6, use_cos = False) :
+    def __init__ (self, xmin, xmax, ymin, ymax, n = 6, use_cos = False, xx = []) :
         self.xmin = xmin
         self.xmax = xmax
         self.ymin = ymin
@@ -18,6 +24,10 @@ class Filter_Bound (object) :
             a = np.cos (a * np.pi) / -2.0 + 0.5
         self.x = (a * (xmax - xmin) + xmin) * 2 * np.pi
         self.y = a * (ymax - ymin) + ymin
+        if xx :
+            self.x = np.append (self.x, np.array (xx) * 2 * np.pi)
+            self.y = np.append (self.y, [self.interpolate (k) for k in xx])
+
     # end def __init__
 
     def interpolate (self, x) :
