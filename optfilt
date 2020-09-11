@@ -31,6 +31,7 @@ class Filter_Opt (pga.PGA, autosuper) :
         self.args       = args
         self.npoles     = 4
         self.nzeros     = 5
+        self.do_stop    = False
         # parameters in the form radius, angle
         # first the zeros then the poles
         # All angles in the range   [0, 0.5]
@@ -252,18 +253,23 @@ class Filter_Opt (pga.PGA, autosuper) :
         best_idx = self.get_best_index (pga.PGA_OLDPOP)
         best_ev  = self.get_evaluation (best_idx, pga.PGA_OLDPOP)
         if best_ev == 0 :
+            self.do_stop = True
             return True
         if self.args.max_evals and self.neval >= self.args.max_evals :
+            self.do_stop = True
             return True
         # Experimental early stopping when stagnating
         if self.last_best - best_ev < self.last_best / 500 :
             self.stag_count += 1
             if self.stag_count >= 200 :
+                self.do_stop = True
                 return True
         else :
             self.stag_count = 0
         self.last_best = best_ev
-        return self.check_stopping_conditions ()
+        if self.check_stopping_conditions () :
+            self.do_stop = True
+        return self.do_stop
     # end def stop_cond
 
     def update_conjugate_complex (self, nums) :
@@ -311,6 +317,16 @@ class Filter_Opt (pga.PGA, autosuper) :
             print ("%1.8f" % a, file = f, end = e)
     # end def _print
 
+    def print_args (self, file) :
+        l = 0
+        for k in self.args.__dict__ :
+            if len (k) > l :
+                l = len (k)
+        for k in sorted (self.args.__dict__) :
+            v = self.args.__dict__ [k]
+            print (('%%-%ds: %%s' % l) % (k, v), file = file)
+    # end def print_args
+
     def print_string (self, f, p, pop) :
         #zeros, poles, b, a = self.phenotype (p, pop)
         print \
@@ -318,6 +334,8 @@ class Filter_Opt (pga.PGA, autosuper) :
             % (self.GA_iter, self.neval, self.stag_count)
             , file = f
             )
+        if self.do_stop :
+            self.print_args (f)
         #print ('params.append \\', file = f)
         #print (" ([ ", file = f, end = '')
         #self._print (f, p, pop, self.nzeros, 0)
