@@ -12,13 +12,25 @@ from filterplot import Filter_Bound, Filter_Bounds
 
 class Filter_Opt (pga.PGA, autosuper) :
     """ Optimize a filter with differential evolution
+        A note on params: FIWIZ seems to use
+        - A base F of 0.5
+        - Dither of 0.5
+        - A jitter of 0.001 added
+        - Subtract NP * 0.0005
+        This would translate to our centered dither/jitter:
+        - base F of 0.5 + 0.25 + 0.0005 = 0.7505
+        - Dither 0.5
+        - Jitter 0.001
+        - Subtract NP * 0.0005
     """
 
     def __init__ (self, args) :
-        self.neval  = 0
-        self.args   = args
-        self.npoles = 4
-        self.nzeros = 5
+        self.neval      = 0
+        self.last_best  = 1-6
+        self.stag_count = 0
+        self.args       = args
+        self.npoles     = 4
+        self.nzeros     = 5
         # parameters in the form radius, angle
         # first the zeros then the poles
         # All angles in the range   [0, 0.5]
@@ -48,28 +60,34 @@ class Filter_Opt (pga.PGA, autosuper) :
             , init                        = ini
             , select_type                 = pga.PGA_SELECT_LINEAR
             , pop_replace_type            = pga.PGA_POPREPL_PAIRWISE_BEST
+            #, pop_replace_type            = pga.PGA_POPREPL_RTR
+            #, rtr_window_size             = 2
             , mutation_bounce_back        = True
             , mutation_only               = True
             , mutation_type               = pga.PGA_MUTATION_DE
             , DE_variant                  = variant
             , DE_crossover_prob           = self.args.crossover_rate
-            , DE_jitter                   = 0.001
+            , DE_jitter                   = self.args.jitter
+            , DE_dither                   = self.args.dither
+            , DE_dither_per_individual    = self.args.dither_per_individual
             , DE_scale_factor             = f
             , DE_crossover_type           = de_cross_type
             , random_seed                 = self.args.random_seed
             )
         stop = []
+        if self.args.max_no_change :
+            d ['max_no_change'] = self.args.max_no_change
+            stop.append (pga.PGA_STOP_NOCHANGE)
         if self.args.max_generations != 0 :
             stop.append (pga.PGA_STOP_MAXITER)
             d ['max_GA_iter'] = self.args.max_generations
-        # Default if no stopping criteria given
-        if not self.args.max_evals and not stop :
+        # Default to max_evals if no max_generations given
+        if not self.args.max_evals and not self.args.max_generations :
             stop.append (pga.PGA_STOP_MAXITER)
             d ['max_GA_iter'] = self.args.max_generations
-        # If stop is empty we set max_GA_iter to maxint (signed int!)
         if stop :
             d ['stopping_rule_types'] = stop
-        else :
+        if args.max_evals and not args.max_generations :
             d ['max_GA_iter'] = 0x7FFFFFFF
         super (self.__class__, self).__init__ \
             (float, 2 * (self.npoles + self.nzeros), **d)
@@ -77,24 +95,98 @@ class Filter_Opt (pga.PGA, autosuper) :
         self.yu = []
         self.yl = []
         self.udb = Filter_Bounds \
-            ( Filter_Bound (0.0,     0.04938, 0.01,  0.025)
-            , Filter_Bound (0.04938, 0.2716,  0.025, 0.025, 17)
-            , Filter_Bound (0.2716,  0.3334,  0.05,  0.05, 11)
-            , Filter_Bound (0.3334,  0.395, -12,   -12)
-            , Filter_Bound (0.395,   0.5,   -40,   -40, 17)
+            ( Filter_Bound \
+                ( 0.0,     0.04938, 0.01,  0.025
+                , xx = (0.01,   0.02,  0.03, 0.04)
+                )
+            , Filter_Bound \
+                ( 0.04938, 0.2716,  0.025, 0.025, 73
+                , xx = ( 0.05
+                       , 0.07,   0.076,   0.0765, 0.077
+                       , 0.0786, 0.07865, 0.0787, 0.079
+                       , 0.08,   0.0808,  0.0809
+                       , 0.10,   0.11,    0.12,   0.13,   0.15, 0.17, 0.18, 0.19
+                       , 0.1995, 0.2,     0.205,  0.21,   0.215
+                       , 0.2162, 0.2163,  0.2164
+                       , 0.22,   0.222
+                       , 0.223,  0.224,   0.225,  0.226,  0.227, 0.228
+                       , 0.23,   0.26,    0.2625, 0.2675
+                       )
+                )
+            , Filter_Bound \
+                ( 0.2716,  0.3334,  0.05,  0.05,  43
+                , xx = ( 0.278,  0.279,   0.2795, 0.28,   0.2805, 0.281
+                       , 0.284,  0.28441, 0.2845, 0.285,  0.286,  0.2865
+                       , 0.294,  0.295,   0.2955
+                       , 0.296,  0.2965,  0.297,  0.298,  0.3
+                       , 0.306,  0.315,   0.316,  0.317,  0.318,  0.3194
+                       , 0.32,   0.3205,  0.3206, 0.321
+                       , 0.3211, 0.3212,  0.3213, 0.3214, 0.3215, 0.3218
+                       , 0.322,  0.3225
+                       , 0.323,  0.3232,  0.3234, 0.3236, 0.3238
+                       , 0.324,  0.3242,  0.3243, 0.3244
+                       , 0.325 , 0.3254,  0.3258
+                       , 0.3262, 0.32625
+                       , 0.3265, 0.327,   0.3272, 0.3273, 0.3274
+                       )
+                )
+            , Filter_Bound \
+                ( 0.3334,  0.395, -12,   -12,     43
+                , xx = ( 0.33341, 0.33342, 0.33343, 0.33344
+                       , 0.34,    0.3405
+                       , 0.342,   0.3425
+                       , 0.343,   0.34325, 0.3434
+                       , 0.344,   0.3443,  0.3446, 0.3447
+                       , 0.345,   0.3454
+                       )
+                )
+            , Filter_Bound \
+                ( 0.395,   0.5,   -40,   -40,     37
+                , xx = ( 0.39501, 0.39502, 0.39503
+                       , 0.4048,  0.405
+                       , 0.422,   0.4222,  0.4225
+                       , 0.423,   0.42325, 0.4236, 0.4237, 0.4238
+                       , 0.424,   0.425,   0.426
+                       , 0.4272,  0.4273
+                       , 0.498,   0.499
+                       )
+                )
             )
         self.ldb = Filter_Bounds \
             ( Filter_Bound (0.0,     0.04938, -0.01,  -0.025)
-            , Filter_Bound (0.04938, 0.2716,  -0.025, -0.025, 17)
-            , Filter_Bound (0.2716,  0.284,   -0.05,  -0.05)
+            , Filter_Bound \
+                ( 0.04938, 0.2716,  -0.025, -0.025, 43
+                , xx = ( 0.11,  0.12,   0.13,  0.14,  0.141
+                       , 0.146, 0.147,  0.148
+                       , 0.15,  0.1525, 0.153, 0.152
+                       , 0.155, 0.157,  0.158, 0.15905
+                       , 0.245, 0.246,  0.247, 0.248, 0.249
+                       , 0.25,  0.255
+                       , 0.26,  0.265,  0.268, 0.269
+                       , 0.27,  0.2705
+                       )
+                )
+            , Filter_Bound \
+                ( 0.2716,  0.284,   -0.05,  -0.05
+                , xx = ( 0.275, 0.276, 0.277, 0.278, 0.279
+                       , 0.28,  0.281, 0.282, 0.283, 0.2835
+                       )
+                )
             , is_lower = True
             )
         self.dbx = list (sorted (set (np.concatenate
             ((self.ldb.x, self.udb.x)))))
         self.udelay = Filter_Bounds \
-            (Filter_Bound (0.0, 0.284,  0.10125,  0.30375, 17))
+            ( Filter_Bound \
+                ( 0.0, 0.284,  0.10125,  0.30375, 17
+                , xx = (0.2834, 0.2835, 0.2836, 0.2837, 0.2338, 0.2839)
+                )
+            )
         self.ldelay = Filter_Bounds \
-            ( Filter_Bound (0.0, 0.284, -0.10125, -0.30375, 17)
+            ( Filter_Bound \
+                ( 0.0, 0.284, -0.10125, -0.30375, 17
+                , xx = (0.2834, 0.2835, 0.2836, 0.2837, 0.2338, 0.2839)
+                )
             , is_lower = True
             )
         self.delay_x = list (sorted (set (np.concatenate
@@ -127,7 +219,10 @@ class Filter_Opt (pga.PGA, autosuper) :
         zeros, poles, b, a = self.phenotype (p, pop)
         wgd, gd = signal.group_delay ((b, a), self.delay_x)
         w, h    = signal.freqz       (b, a, self.dbx)
-        hf      = self.fir_h * h
+        if self.args.use_prefilter :
+            hf  = self.fir_h * h
+        else :
+            hf  = h
         db      = 20 * np.log10 (abs (hf))
         dbdict  = dict ((x, y) for x, y in zip (self.dbx, db))
         dldict  = dict ((x, y) for x, y in zip (self.delay_x, gd))
@@ -154,11 +249,20 @@ class Filter_Opt (pga.PGA, autosuper) :
     # end def evaluate
 
     def stop_cond (self) :
-        best = self.get_best_index (pga.PGA_OLDPOP)
-        if self.get_evaluation (best, pga.PGA_OLDPOP) == 0 :
+        best_idx = self.get_best_index (pga.PGA_OLDPOP)
+        best_ev  = self.get_evaluation (best_idx, pga.PGA_OLDPOP)
+        if best_ev == 0 :
             return True
         if self.args.max_evals and self.neval >= self.args.max_evals :
             return True
+        # Experimental early stopping when stagnating
+        if self.last_best - best_ev < self.last_best / 500 :
+            self.stag_count += 1
+            if self.stag_count >= 200 :
+                return True
+        else :
+            self.stag_count = 0
+        self.last_best = best_ev
         return self.check_stopping_conditions ()
     # end def stop_cond
 
@@ -209,7 +313,11 @@ class Filter_Opt (pga.PGA, autosuper) :
 
     def print_string (self, f, p, pop) :
         #zeros, poles, b, a = self.phenotype (p, pop)
-        print ("Iter: %s Evals: %s" % (self.GA_iter, self.neval), file = f)
+        print \
+            ( "Iter: %s Evals: %s Stag: %s"
+            % (self.GA_iter, self.neval, self.stag_count)
+            , file = f
+            )
         #print ('params.append \\', file = f)
         #print (" ([ ", file = f, end = '')
         #self._print (f, p, pop, self.nzeros, 0)
@@ -242,10 +350,28 @@ def main () :
         , default = 'best'
         )
     cmd.add_argument \
+        ( '-D', '--dither'
+        , help    = "Dither value to use, default=%(default)s"
+        , default = 0.0
+        , type    = float
+        )
+    cmd.add_argument \
         ( '-e', '--use-exponential-crossover'
         , help    = "Use exp crossover (instead of bin)"
         , default = False
         , action  = 'store_true'
+        )
+    cmd.add_argument \
+        ( '-i', '--dither-per-individual'
+        , help    = "Use dither per individual not per generation"
+        , default = False
+        , action  = 'store_true'
+        )
+    cmd.add_argument \
+        ( '-J', '--jitter'
+        , help    = "Jitter value to use, default=%(default)s"
+        , default = 0.001
+        , type    = float
         )
     cmd.add_argument \
         ( '-G', '--max-generations'
@@ -263,6 +389,13 @@ def main () :
     cmd.add_argument \
         ( '-m', '--max-evals'
         , help    = "Maximum number of evaluations default=%(default)s"
+        , default = 0
+        , type    = int
+        )
+    cmd.add_argument \
+        ( '-n', '--max-no_change'
+        , help    = "Maximum number of generations without change before "
+                    "stopping default=%(default)s"
         , default = 0
         , type    = int
         )
@@ -288,6 +421,12 @@ def main () :
     cmd.add_argument \
         ( '-s', '--sort-population'
         , help    = "Sort population by angle/radius"
+        , default = False
+        , action  = 'store_true'
+        )
+    cmd.add_argument \
+        ( '-u', '--use-prefilter'
+        , help    = "Use pre-filter in addition to optimized filter"
         , default = False
         , action  = 'store_true'
         )
