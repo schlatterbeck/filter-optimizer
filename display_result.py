@@ -8,6 +8,9 @@ from math     import sqrt
 from argparse import ArgumentParser
 from numbers  import Number
 
+legend = dict.fromkeys \
+    (('np', 'cross', 'Cr', 'dither'))
+
 class Eval_Data :
 
     def __init__ (self, args) :
@@ -15,9 +18,12 @@ class Eval_Data :
         result_by_key = {}
         with open (args.filename, 'r')  as f :
             dr = DictReader (f, delimiter = ';')
-            key_attributes = dr.fieldnames [:5]
-            if dr.fieldnames [5] == 'Cr' :
-                key_attributes = dr.fieldnames [:6]
+            if 'randseed' in dr.fieldnames :
+                key_attributes = dr.fieldnames [:-4]
+            else :
+                key_attributes = dr.fieldnames [:5]
+                if dr.fieldnames [5] == 'Cr' :
+                    key_attributes = dr.fieldnames [:6]
             x_axis = None
             self.x_idx = None
             keys = []
@@ -34,18 +40,32 @@ class Eval_Data :
                     else :
                         raise ValueError \
                             ('(More than) two key attributes used for X: %s, %s'
-                            % (name, arg)
+                            % (name, self.x_name)
                             )
                 else :
                     keys.append (name)
             if 'Cr' not in keys and self.x_name != 'Cr' :
                 keys.append ('Cr')
+            if 'prefilter' not in keys and self.x_name != 'prefilter' :
+                keys.append ('prefilter')
+            if 'jitter' not in keys and self.x_name != 'jitter' :
+                keys.append ('jitter')
+            if 'dither' not in keys and self.x_name != 'dither' :
+                keys.append ('dither')
             self.keys = keys = tuple (keys)
+            print \
+                ( "Trying to match: %s"
+                % (', '.join ('%s: %s' % (k, getattr (self.args, k)) for k in keys))
+                )
             for rec in dr : 
                 rec ['np']    = int (rec ['np'])
                 rec ['F']     = float (rec ['F'])
                 rec ['sort']  = int (rec ['sort'])
-                rec ['idx']   = int (rec ['idx'])
+                if 'randseed' in rec :
+                    rec ['randseed'] = int (rec ['randseed'])
+                else :
+                    rec ['randseed'] = int (rec ['idx'])
+                    del rec ['idx']
                 rec ['eval']  = float (rec ['eval'])
                 rec ['neval'] = int (rec ['neval'])
                 rec ['iter']  = int (rec ['iter'])
@@ -53,6 +73,23 @@ class Eval_Data :
                     rec ['Cr'] = float (rec ['Cr'])
                 else :
                     rec ['Cr'] = 1.0
+                # Default for all measurements stored without this info
+                if 'prefilter' in rec :
+                    rec ['prefilter'] = int (rec ['prefilter'])
+                else :
+                    rec ['prefilter'] = self.args.prefilter
+                if 'dither' in rec :
+                    rec ['dither'] = float (rec ['dither'])
+                else :
+                    rec ['dither'] = self.args.dither
+                if 'jitter' in rec :
+                    rec ['jitter'] = float (rec ['jitter'])
+                else :
+                    rec ['jitter'] = self.args.jitter
+                if 'F_dec' in rec :
+                    rec ['F_dec'] = float (rec ['F_dec'])
+                else :
+                    rec ['F_dec'] = self.args.F_dec
 
                 do_continue = False
                 for k in keys :
@@ -121,7 +158,7 @@ class Eval_Data :
             ( 'Evaluations, Successes\n'
             + ' '.join
                 ( '='.join ((k, str (getattr (self.args, k))))
-                  for k in self.keys
+                  for k in self.keys if k in legend
                 )
             )
         plt.xlabel (self.x_name)
@@ -131,12 +168,18 @@ class Eval_Data :
             if ml < len (r) :
                 ml = len (r)
         if ml :
-            bp = ax1.boxplot (nev / 1000, positions = x, widths = tick)
+            if len (x) == 1 :
+                bp = ax1.boxplot (nev [0] / 1000, positions = x)
+            else :
+                bp = ax1.boxplot (nev / 1000, positions = x, widths = tick)
             plt.ylabel \
                 ('Evals (thousands)', color = bp ['medians'][0].get_color ())
         ax1.set_xlim (xmin - tick / 2, xmax + tick / 2, auto = True)
         ax2 = ax1.twinx ()
-        p, = ax2.plot   (x, y2)
+        if len (x) == 1 :
+            p, = ax2.plot   (x, y2, 'o', markersize = 5)
+        else :
+            p, = ax2.plot   (x, y2)
         plt.ylabel ('Successes (%)', color = p.get_color ())
         plt.show ()
     # end def plot_eval_success
@@ -167,10 +210,36 @@ def main () :
         , default = 1.0
         )
     cmd.add_argument \
+        ( '-D', '--dither'
+        , type    = float
+        , help    = "Dither used, default=%(default)s"
+        , default = 0.0
+        )
+    cmd.add_argument \
         ( '-F', '--scale-factor'
         , help    = "Base DE scale factor F, default=%(default)s"
         , default = 0.85
         , dest    = 'F'
+        , type    = float
+        )
+    cmd.add_argument \
+        ( '-i', '--dither-per-individual'
+        , help    = "Uses dither per individual"
+        , dest    = 'dither_p_i'
+        , default = False
+        , action  = 'store_true'
+        )
+    cmd.add_argument \
+        ( '-J', '--jitter'
+        , type    = float
+        , help    = "Jitter used, default=%(default)s"
+        , default = 0.001
+        )
+    cmd.add_argument \
+        ( '-P', '--scale-with_popsize'
+        , help    = "Scale F negatively with popsize, default=%(default)s"
+        , default = 0.0005
+        , dest    = 'F_dec'
         , type    = float
         )
     cmd.add_argument \
@@ -185,6 +254,13 @@ def main () :
         , help    = "Sort population by angle/radius"
         , default = False
         , dest    = 'sort'
+        , action  = 'store_true'
+        )
+    cmd.add_argument \
+        ( '-u', '--use-prefilter'
+        , help    = "Uses prefilter before optimized filter"
+        , default = False
+        , dest    = 'prefilter'
         , action  = 'store_true'
         )
     args = cmd.parse_args ()
