@@ -47,8 +47,10 @@ class Filter_Opt (pga.PGA, autosuper) :
         de_cross_type = pga.PGA_DE_CROSSOVER_BIN
         if self.args.use_exponential_crossover :
             de_cross_type = pga.PGA_DE_CROSSOVER_EXP
-        variant = getattr (pga, 'PGA_DE_VARIANT_' \
-                + self.args.de_variant.upper ())
+        v = self.args.de_variant
+        if v == 'eo' :
+            v = 'either_or'
+        variant = getattr (pga, 'PGA_DE_VARIANT_' + v.upper ())
         f = ( self.args.scale_factor
             - (self.args.popsize * self.args.scale_with_popsize)
             )
@@ -369,7 +371,7 @@ def main () :
     cmd.add_argument \
         ( '-d', '--de-variant'
         , help    = "Variant of DE algorithm, "
-                    "one of rand/best default=%(default)s"
+                    "one of rand/best/eo default=%(default)s"
         , default = 'best'
         )
     cmd.add_argument \
@@ -416,7 +418,7 @@ def main () :
         , type    = int
         )
     cmd.add_argument \
-        ( '-n', '--max-no_change'
+        ( '-n', '--max-no-change'
         , help    = "Maximum number of generations without change before "
                     "stopping default=%(default)s"
         , default = 0
