@@ -235,13 +235,18 @@ class Filter_Opt (pga.PGA, autosuper) :
         dbdict  = dict ((x, y) for x, y in zip (self.dbx, db))
         dldict  = dict ((x, y) for x, y in zip (self.delay_x, gd))
 
-        ev = 0.0
+        evf = 0.0
+        ev  = 0.0
         for xb, yb in self.udb :
             if dbdict [xb] > yb :
                 ev += (dbdict [xb] - yb) ** 2
+            elif self.args.optimize_further and not ev :
+                evf += abs (dbdict [xb] - yb) ** 0.5
         for xb, yb in self.ldb :
             if dbdict [xb] < yb :
                 ev += (dbdict [xb] - yb) ** 2
+            elif self.args.optimize_further and not ev :
+                evf += abs (dbdict [xb] - yb) ** 0.5
         delaydelta = None
         # Shift the curve so that it touches the upper delay delta
         for xb, yb in self.udelay :
@@ -253,13 +258,17 @@ class Filter_Opt (pga.PGA, autosuper) :
             d = yb / (2 * np.pi)
             if dldict [xb] - delaydelta < d :
                 ev += (dldict [xb] - delaydelta - d) ** 2
+            elif self.args.optimize_further and not ev :
+                evf += abs (dldict [xb] - delaydelta - d) ** 0.5
+        if self.args.optimize_further and not ev :
+            return -evf
         return ev
     # end def evaluate
 
     def stop_cond (self) :
         best_idx = self.get_best_index (pga.PGA_OLDPOP)
         best_ev  = self.get_evaluation (best_idx, pga.PGA_OLDPOP)
-        if best_ev == 0 :
+        if not self.args.optimize_further and best_ev == 0 :
             self.do_stop = True
             return True
         if self.args.max_evals and self.neval >= self.args.max_evals :
@@ -377,7 +386,7 @@ def main () :
     cmd.add_argument \
         ( '-D', '--dither'
         , help    = "Dither value to use, default=%(default)s"
-        , default = 0.0
+        , default = 0.1
         , type    = float
         )
     cmd.add_argument \
@@ -402,19 +411,19 @@ def main () :
         ( '-G', '--max-generations'
         , type    = int
         , help    = "Maximum number of generations, default=%(default)s"
-        , default = 1000
+        , default = 0
         )
     cmd.add_argument \
         ( '-F', '--scale-factor'
         , help    = "Base DE scale factor F, default=%(default)s "
                     "(popsize-dependent part is subtracted)"
-        , default = 0.85
+        , default = 0.87
         , type    = float
         )
     cmd.add_argument \
         ( '-m', '--max-evals'
         , help    = "Maximum number of evaluations default=%(default)s"
-        , default = 0
+        , default = 500000
         , type    = int
         )
     cmd.add_argument \
@@ -425,17 +434,23 @@ def main () :
         , type    = int
         )
     cmd.add_argument \
+        ( '-o', '--optimize-further'
+        , help    = "Normally we stop when constraints are met, "
+                    "this tries to further optimize the filter"
+        , action  = "store_true"
+        )
+    cmd.add_argument \
         ( '-P', '--scale-with-popsize'
         , help    = "Subtract this value * popsize from scale-factor F."
-                    " A value of 0.0005 may be good."
-        , default = 0.0
+                    " Set to 0 for turning off, default=%(default)s"
+        , default = 0.0005
         , type    = float
         )
     cmd.add_argument \
         ( '-p', '--popsize'
         , type    = int
         , help    = "Population size, default=%(default)s"
-        , default = 300
+        , default = 150
         )
     cmd.add_argument \
         ( '-R', '--random-seed'
