@@ -204,7 +204,7 @@ class Filter_Opt (pga.PGA, autosuper) :
             , 0.415454, 0.169865, -0.019816, -0.033271
             ]
         fir_w, self.fir_h = signal.freqz (self.fir, [1.0], self.dbx)
-        self.a0 = 0.00390625
+        self.a0 = self.args.gain
     # end def __init__
 
     def phenotype (self, p, pop) :
@@ -418,6 +418,13 @@ def main () :
         , help    = "Base DE scale factor F, default=%(default)s "
                     "(popsize-dependent part is subtracted)"
         , default = 0.87
+        , type    = float
+        )
+    cmd.add_argument \
+        ( '-k', '--gain'
+        , help    = "Gain to apply for filter default=%(default)s, "
+                    "set to 0 to auto-generate"
+        , default = 0.00390625
         , type    = float
         )
     cmd.add_argument \
