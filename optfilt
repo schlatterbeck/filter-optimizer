@@ -241,12 +241,12 @@ class Filter_Opt (pga.PGA, autosuper) :
             if dbdict [xb] > yb :
                 ev += (dbdict [xb] - yb) ** 2
             elif self.args.optimize_further and not ev :
-                evf += abs (dbdict [xb] - yb) ** 0.5
+                evf += min (abs (dbdict [xb] - yb) ** 0.5, 1.0)
         for xb, yb in self.ldb :
             if dbdict [xb] < yb :
                 ev += (dbdict [xb] - yb) ** 2
             elif self.args.optimize_further and not ev :
-                evf += abs (dbdict [xb] - yb) ** 0.5
+                evf += min (abs (dbdict [xb] - yb) ** 0.5, 1.0)
         delaydelta = None
         # Shift the curve so that it touches the upper delay delta
         for xb, yb in self.udelay :

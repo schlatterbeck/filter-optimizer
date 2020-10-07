@@ -47,13 +47,16 @@ def display (gene, title = '') :
     filterplot.plot_delay (wgd, gd, xmax = 0.35, **d)
 # end def display
 
-best = 'The Best Evaluation: 0.000000e+00.'
+best = 'The Best Evaluation:'
 n = None
 gene = []
 with open (sys.argv [1], 'r') as f :
     for line in f :
         line = line.strip ()
-        if line == best :
+        if line.startswith (best) :
+            v = float (line.split (':') [-1][:-1])
+            if v > 0 :
+                continue
             n = 0
             continue
         if n is not None :
