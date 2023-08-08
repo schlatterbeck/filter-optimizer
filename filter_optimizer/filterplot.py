@@ -14,7 +14,7 @@ def update_conjugate_complex (numbers) :
 
 class Filter_Bound (object) :
 
-    def __init__ (self, xmin, xmax, ymin, ymax, n = 6, use_cos = False, xx = []) :
+    def __init__ (self, xmin, xmax, ymin, ymax, n = 6, use_cos = False, xx = []):
         self.xmin = xmin
         self.xmax = xmax
         self.ymin = ymin

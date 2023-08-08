@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 
-from __future__ import print_function
 from argparse   import ArgumentParser
 from scipy      import signal
 from bisect     import bisect
@@ -8,7 +7,7 @@ import pga
 import sys
 import numpy as np
 from rsclib.autosuper import autosuper
-from filterplot import Filter_Bound, Filter_Bounds
+from .filterplot import Filter_Bound, Filter_Bounds
 
 class Filter_Opt (pga.PGA, autosuper) :
     """ Optimize a filter with differential evolution

@@ -4,7 +4,7 @@ import sys
 from scipy import signal
 import matplotlib.pyplot as plt
 import numpy as np
-import filterplot
+from . import filterplot
 
 constraints_mag_u = \
     [ [0,    0.04938, 0.2716, 0.2716,  0.3334,  0.3334,   0.395,  0.395,   0.5]
@@ -26,7 +26,7 @@ constr_delay = [constr_filt_u, constr_filt_l]
 constr_magn  = [constraints_mag_u, constraints_mag_l]
 a0 = 0.00390625
 
-def display (gene, title = '') :
+def display (gene, title = ''):
     rz = range (0, 10, 2)
     rp = range (0,  8, 2)
     zeros = [gene [k]    * np.e ** (2j * np.pi * gene [k+1])  for k in rz]
@@ -37,7 +37,7 @@ def display (gene, title = '') :
     (w, h) = signal.freqz  (b, a, 50000)
     (wgd, gd) = signal.group_delay ((b, a))
     t = 'own experiment with pre-filter'
-    if title :
+    if title:
         t = t + '\n' + title
     d = dict (fs = 1.0, title = t, constraints = constr_magn)
     #filterplot.plot_response (w, h, **d)
@@ -47,33 +47,37 @@ def display (gene, title = '') :
     filterplot.plot_delay (wgd, gd, xmax = 0.35, **d)
 # end def display
 
-best = 'The Best Evaluation:'
-n = None
-gene = []
-with open (sys.argv [1], 'r') as f :
-    for line in f :
-        line = line.strip ()
-        if line.startswith (best) :
-            v = float (line.split (':') [-1][:-1])
-            if v > 0 :
+def main (argv = sys.argv [1:]):
+    best = 'The Best Evaluation:'
+    n = None
+    gene = []
+    with open (argv [0], 'r') as f:
+        for line in f:
+            line = line.strip ()
+            if line.startswith (best):
+                v = float (line.split (':') [-1][:-1])
+                if v > 0:
+                    continue
+                n = 0
                 continue
-            n = 0
-            continue
-        if n is not None :
-            if line.startswith ('Iter:') :
-                title = line
-            if line.startswith ('#') :
-                k, r = line [1:].split (':')
-                assert int (k) == n
-                g = [x.strip().lstrip('[').rstrip(']') for x in r.split (',')]
-                g = [float (x) for x in g]
-                gene.extend (g)
-                n += len (g)
-            elif n > 0 :
-                d = {}
-                if title :
-                    d ['title'] = title
-                display (gene, **d)
-                gene  = []
-                n     = None
-                title = None
+            if n is not None:
+                if line.startswith ('Iter:'):
+                    title = line
+                if line.startswith ('#'):
+                    k, r = line [1:].split (':')
+                    assert int (k) == n
+                    g = [x.strip().lstrip('[').rstrip(']')
+                         for x in r.split (',')
+                        ]
+                    g = [float (x) for x in g]
+                    gene.extend (g)
+                    n += len (g)
+                elif n > 0:
+                    d = {}
+                    if title:
+                        d ['title'] = title
+                    display (gene, **d)
+                    gene  = []
+                    n     = None
+                    title = None
+# end def main
