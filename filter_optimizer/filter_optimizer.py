@@ -9,7 +9,7 @@ import numpy as np
 from rsclib.autosuper import autosuper
 from .filterplot import Filter_Bound, Filter_Bounds
 
-class Filter_Opt (pga.PGA, autosuper) :
+class Filter_Opt (pga.PGA, autosuper):
     """ Optimize a filter with differential evolution
         A note on params: FIWIZ seems to use
         - A base F of 0.5
@@ -23,7 +23,7 @@ class Filter_Opt (pga.PGA, autosuper) :
         - Subtract NP * 0.0005
     """
 
-    def __init__ (self, args) :
+    def __init__ (self, args):
         self.neval      = 0
         self.last_best  = 1-6
         self.stag_count = 0
@@ -37,17 +37,17 @@ class Filter_Opt (pga.PGA, autosuper) :
         # zeros radius in the range [0, 5]
         # poles radius in the range [0, 0.999]
         ini = []
-        for k in range (self.nzeros) :
+        for k in range (self.nzeros):
             ini.append ((0, 5))
             ini.append ((0, 0.5))
-        for k in range (self.npoles) :
+        for k in range (self.npoles):
             ini.append ((0, 0.999))
             ini.append ((0, 0.5))
         de_cross_type = pga.PGA_DE_CROSSOVER_BIN
-        if self.args.use_exponential_crossover :
+        if self.args.use_exponential_crossover:
             de_cross_type = pga.PGA_DE_CROSSOVER_EXP
         v = self.args.de_variant
-        if v == 'eo' :
+        if v == 'eo':
             v = 'either_or'
         variant = getattr (pga, 'PGA_DE_VARIANT_' + v.upper ())
         f = ( self.args.scale_factor
@@ -77,19 +77,19 @@ class Filter_Opt (pga.PGA, autosuper) :
             , random_seed                 = self.args.random_seed
             )
         stop = []
-        if self.args.max_no_change :
+        if self.args.max_no_change:
             d ['max_no_change'] = self.args.max_no_change
             stop.append (pga.PGA_STOP_NOCHANGE)
-        if self.args.max_generations != 0 :
+        if self.args.max_generations != 0:
             stop.append (pga.PGA_STOP_MAXITER)
             d ['max_GA_iter'] = self.args.max_generations
         # Default to max_evals if no max_generations given
-        if not self.args.max_evals and not self.args.max_generations :
+        if not self.args.max_evals and not self.args.max_generations:
             stop.append (pga.PGA_STOP_MAXITER)
             d ['max_GA_iter'] = self.args.max_generations
-        if stop :
+        if stop:
             d ['stopping_rule_types'] = stop
-        if args.max_evals and not args.max_generations :
+        if args.max_evals and not args.max_generations:
             d ['max_GA_iter'] = 0x7FFFFFFF
         super (self.__class__, self).__init__ \
             (float, 2 * (self.npoles + self.nzeros), **d)
@@ -206,8 +206,8 @@ class Filter_Opt (pga.PGA, autosuper) :
         self.a0 = self.args.gain
     # end def __init__
 
-    def phenotype (self, p, pop) :
-        def ga (i) :
+    def phenotype (self, p, pop):
+        def ga (i):
             return self.get_allele (p, pop, i)
         # pole offset in gene
         po = 2 * self.nzeros
@@ -221,14 +221,14 @@ class Filter_Opt (pga.PGA, autosuper) :
         return (zeros, poles, b, a)
     # end def phenotype
 
-    def evaluate (self, p, pop) :
+    def evaluate (self, p, pop):
         self.neval += 1
         zeros, poles, b, a = self.phenotype (p, pop)
         wgd, gd = signal.group_delay ((b, a), self.delay_x)
         w, h    = signal.freqz       (b, a, self.dbx)
-        if self.args.use_prefilter :
+        if self.args.use_prefilter:
             hf  = self.fir_h * h
-        else :
+        else:
             hf  = h
         db      = 20 * np.log10 (abs (hf))
         dbdict  = dict ((x, y) for x, y in zip (self.dbx, db))
@@ -236,69 +236,69 @@ class Filter_Opt (pga.PGA, autosuper) :
 
         evf = 0.0
         ev  = 0.0
-        for xb, yb in self.udb :
-            if dbdict [xb] > yb :
+        for xb, yb in self.udb:
+            if dbdict [xb] > yb:
                 ev += (dbdict [xb] - yb) ** 2
-            elif self.args.optimize_further and not ev :
+            elif self.args.optimize_further and not ev:
                 evf += min (abs (dbdict [xb] - yb) ** 0.5, 1.0)
-        for xb, yb in self.ldb :
-            if dbdict [xb] < yb :
+        for xb, yb in self.ldb:
+            if dbdict [xb] < yb:
                 ev += (dbdict [xb] - yb) ** 2
-            elif self.args.optimize_further and not ev :
+            elif self.args.optimize_further and not ev:
                 evf += min (abs (dbdict [xb] - yb) ** 0.5, 1.0)
         delaydelta = None
         # Shift the curve so that it touches the upper delay delta
-        for xb, yb in self.udelay :
+        for xb, yb in self.udelay:
             delta = dldict [xb] - (yb / 2 * np.pi)
-            if delaydelta is None or delta > delaydelta :
+            if delaydelta is None or delta > delaydelta:
                 delaydelta = delta
         # Check where the curve underflows the lower delay delta
-        for xb, yb in self.ldelay :
+        for xb, yb in self.ldelay:
             d = yb / (2 * np.pi)
-            if dldict [xb] - delaydelta < d :
+            if dldict [xb] - delaydelta < d:
                 ev += (dldict [xb] - delaydelta - d) ** 2
-            elif self.args.optimize_further and not ev :
+            elif self.args.optimize_further and not ev:
                 evf += abs (dldict [xb] - delaydelta - d) ** 0.5
-        if self.args.optimize_further and not ev :
+        if self.args.optimize_further and not ev:
             return -evf
         return ev
     # end def evaluate
 
-    def stop_cond (self) :
+    def stop_cond (self):
         best_idx = self.get_best_index (pga.PGA_OLDPOP)
         best_ev  = self.get_evaluation (best_idx, pga.PGA_OLDPOP)
-        if not self.args.optimize_further and best_ev == 0 :
+        if not self.args.optimize_further and best_ev == 0:
             self.do_stop = True
             return True
-        if self.args.max_evals and self.neval >= self.args.max_evals :
+        if self.args.max_evals and self.neval >= self.args.max_evals:
             self.do_stop = True
             return True
         # Experimental early stopping when stagnating
-        if self.last_best - best_ev < self.last_best / 500 :
+        if self.last_best - best_ev < self.last_best / 500:
             self.stag_count += 1
-            if self.stag_count >= 200 :
+            if self.stag_count >= 200:
                 self.do_stop = True
                 return True
-        else :
+        else:
             self.stag_count = 0
         self.last_best = best_ev
-        if self.check_stopping_conditions () :
+        if self.check_stopping_conditions ():
             self.do_stop = True
         return self.do_stop
     # end def stop_cond
 
-    def update_conjugate_complex (self, nums) :
+    def update_conjugate_complex (self, nums):
         """ Modify nums in-place to add conjugate complex numbers """
         n2 = [k.conjugate () for k in nums if k.imag]
         nums.extend (n2)
     # end def update_conjugate_complex
 
-    def pre_eval (self, pop) :
-        if not self.args.sort_population :
+    def pre_eval (self, pop):
+        if not self.args.sort_population:
             return
         ga  = self.get_allele
         # Unpack gene into pairs (angle, radius)
-        for p in range (self.pop_size) :
+        for p in range (self.pop_size):
             zeros = \
                 [( ga (p, pop, 2*i + 1)
                  , ga (p, pop, 2*i)
@@ -315,41 +315,41 @@ class Filter_Opt (pga.PGA, autosuper) :
             zeros = list (sorted (zeros))
             poles = list (sorted (poles))
             # re-pack into gene
-            for i in range (self.nzeros) :
+            for i in range (self.nzeros):
                 self.set_allele (p, pop, 2*i,   zeros [i][1])
                 self.set_allele (p, pop, 2*i+1, zeros [i][0])
-            for i in range (self.npoles) :
+            for i in range (self.npoles):
                 self.set_allele (p, pop, 2*i + 2*self.nzeros,   poles [i][1])
                 self.set_allele (p, pop, 2*i + 2*self.nzeros+1, poles [i][0])
     # end def pre_eval
 
-    def _print (self, f, p, pop, n, offset) :
-        for k in range (n) :
+    def _print (self, f, p, pop, n, offset):
+        for k in range (n):
             e = ', '
-            if k == n - 1 :
+            if k == n - 1:
                 e = '\n'
             a = self.get_allele (p, pop, 2*k+offset)
             print ("%1.8f" % a, file = f, end = e)
     # end def _print
 
-    def print_args (self, file) :
+    def print_args (self, file):
         l = 0
-        for k in self.args.__dict__ :
-            if len (k) > l :
+        for k in self.args.__dict__:
+            if len (k) > l:
                 l = len (k)
-        for k in sorted (self.args.__dict__) :
+        for k in sorted (self.args.__dict__):
             v = self.args.__dict__ [k]
             print (('%%-%ds: %%s' % l) % (k, v), file = file)
     # end def print_args
 
-    def print_string (self, f, p, pop) :
+    def print_string (self, f, p, pop):
         #zeros, poles, b, a = self.phenotype (p, pop)
         print \
             ( "Iter: %s Evals: %s Stag: %s"
             % (self.GA_iter, self.neval, self.stag_count)
             , file = f
             )
-        if self.do_stop :
+        if self.do_stop:
             self.print_args (f)
         #print ('params.append \\', file = f)
         #print (" ([ ", file = f, end = '')
@@ -368,7 +368,7 @@ class Filter_Opt (pga.PGA, autosuper) :
 
 # end class Filter_Opt
 
-def main () :
+def main ():
     cmd = ArgumentParser ()
     cmd.add_argument \
         ( '-C', '--crossover-rate'
@@ -481,5 +481,5 @@ def main () :
     pg.run ()
 # end def main
 
-if __name__ == '__main__' :
+if __name__ == '__main__':
     main ()

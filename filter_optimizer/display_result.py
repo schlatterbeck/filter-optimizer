@@ -11,122 +11,124 @@ from numbers  import Number
 legend = dict.fromkeys \
     (('np', 'cross', 'Cr', 'dither'))
 
-class Eval_Data :
+class Eval_Data:
 
-    def __init__ (self, args) :
+    def __init__ (self, args):
         self.args = args
         result_by_key = {}
-        with open (args.filename, 'r')  as f :
+        with open (args.filename, 'r')  as f:
             dr = DictReader (f, delimiter = ';')
-            if 'randseed' in dr.fieldnames :
+            if 'randseed' in dr.fieldnames:
                 key_attributes = dr.fieldnames [:-4]
-            else :
+            else:
                 key_attributes = dr.fieldnames [:5]
-                if dr.fieldnames [5] == 'Cr' :
+                if dr.fieldnames [5] == 'Cr':
                     key_attributes = dr.fieldnames [:6]
             x_axis = None
             self.x_idx = None
             keys = []
-            for i, name in enumerate (key_attributes) :
+            for i, name in enumerate (key_attributes):
                 arg = getattr (args, name)
                 if  (  arg is None
                     or arg == ''
                     or isinstance (arg, Number) and arg < 0
-                    ) :
-                    if x_axis is None :
+                    ):
+                    if x_axis is None:
                         x_axis = name
                         self.x_idx  = i
                         self.x_name = name
-                    else :
+                    else:
                         raise ValueError \
                             ('(More than) two key attributes used for X: %s, %s'
                             % (name, self.x_name)
                             )
-                else :
+                else:
                     keys.append (name)
-            if 'Cr' not in keys and self.x_name != 'Cr' :
+            if 'Cr' not in keys and self.x_name != 'Cr':
                 keys.append ('Cr')
-            if 'prefilter' not in keys and self.x_name != 'prefilter' :
+            if 'prefilter' not in keys and self.x_name != 'prefilter':
                 keys.append ('prefilter')
-            if 'jitter' not in keys and self.x_name != 'jitter' :
+            if 'jitter' not in keys and self.x_name != 'jitter':
                 keys.append ('jitter')
-            if 'dither' not in keys and self.x_name != 'dither' :
+            if 'dither' not in keys and self.x_name != 'dither':
                 keys.append ('dither')
             self.keys = keys = tuple (keys)
             print \
                 ( "Trying to match: %s"
-                % (', '.join ('%s: %s' % (k, getattr (self.args, k)) for k in keys))
+                % (', '.join ('%s: %s' % (k, getattr (self.args, k))
+                   for k in keys)
+                  )
                 )
-            for rec in dr : 
+            for rec in dr: 
                 rec ['np']    = int (rec ['np'])
                 rec ['F']     = float (rec ['F'])
                 rec ['sort']  = int (rec ['sort'])
-                if 'randseed' in rec :
+                if 'randseed' in rec:
                     rec ['randseed'] = int (rec ['randseed'])
-                else :
+                else:
                     rec ['randseed'] = int (rec ['idx'])
                     del rec ['idx']
                 rec ['eval']  = float (rec ['eval'])
                 rec ['neval'] = int (rec ['neval'])
                 rec ['iter']  = int (rec ['iter'])
-                if 'Cr' in rec :
+                if 'Cr' in rec:
                     rec ['Cr'] = float (rec ['Cr'])
-                else :
+                else:
                     rec ['Cr'] = 1.0
                 # Default for all measurements stored without this info
-                if 'prefilter' in rec :
+                if 'prefilter' in rec:
                     rec ['prefilter'] = int (rec ['prefilter'])
-                else :
+                else:
                     rec ['prefilter'] = self.args.prefilter
-                if 'dither' in rec :
+                if 'dither' in rec:
                     rec ['dither'] = float (rec ['dither'])
-                else :
+                else:
                     rec ['dither'] = self.args.dither
-                if 'jitter' in rec :
+                if 'jitter' in rec:
                     rec ['jitter'] = float (rec ['jitter'])
-                else :
+                else:
                     rec ['jitter'] = self.args.jitter
-                if 'F_dec' in rec :
+                if 'F_dec' in rec:
                     rec ['F_dec'] = float (rec ['F_dec'])
-                else :
+                else:
                     rec ['F_dec'] = self.args.F_dec
 
                 do_continue = False
-                for k in keys :
+                for k in keys:
                     arg = getattr (args, k)
-                    if arg and arg != rec [k] :
+                    if arg and arg != rec [k]:
                         do_continue = True
                         break
-                if do_continue :
+                if do_continue:
                     continue
                 key = tuple (rec [k] for k in key_attributes)
-                if key not in result_by_key :
+                if key not in result_by_key:
                     result_by_key [key] = dict \
                         ( success = 0
                         , fail    = 0
                         , eval    = []
                         , neval   = []
                         )
-                if rec ['eval'] == 0 :
+                if rec ['eval'] == 0:
                     result_by_key [key]['success'] += 1
                     result_by_key [key]['neval'].append (rec ['neval'])
-                else :
+                else:
                     result_by_key [key]['fail'] += 1
                     result_by_key [key]['eval'].append (rec ['eval'])
-        for k in result_by_key :
+        for k in result_by_key:
             r = result_by_key [k]
             r ['eval']  = np.array (r ['eval'])
             r ['neval'] = np.array (r ['neval'])
             n = r ['success']
-            if n :
+            if n:
                 r ['mean'] = sum (r ['neval']) / n
                 r ['stdd'] = sqrt (sum ((r ['neval'] - r ['mean']) ** 2)) / n
         self.result_by_key = result_by_key
-        if not self.result_by_key :
+        if not self.result_by_key:
             raise ValueError ("No results found")
     # end def __init__
 
-    def plot_eval_success (self) :
+    def plot_eval_success (self):
         rbk  = self.result_by_key
         fig  = plt.figure ()
         ax1  = fig.add_subplot (111)
@@ -137,19 +139,19 @@ class Eval_Data :
         nev  = []
         xmin = 1e6
         xmax = -1
-        for k in sorted (rbk, key = lambda x : x [self.x_idx]) :
+        for k in sorted (rbk, key = lambda x: x [self.x_idx]):
             r = rbk [k]
             a = k [self.x_idx]
             x.append (a)
-            if a < xmin :
+            if a < xmin:
                 xmin = a
-            if a > xmax :
+            if a > xmax:
                 xmax = a
             y2.append ((r ['success']) / (r ['success'] + r ['fail']) * 100)
-            if r ['success'] :
+            if r ['success']:
                 y1.append (r ['mean'])
                 nev.append (r ['neval'])
-            else :
+            else:
                 y1.append (0)
                 nev.append (np.array ([]))
         nev = np.array (nev)
@@ -164,21 +166,21 @@ class Eval_Data :
         plt.xlabel (self.x_name)
         tick = (xmax - xmin) / len (x) / 2.
         ml   = 0
-        for r in nev :
-            if ml < len (r) :
+        for r in nev:
+            if ml < len (r):
                 ml = len (r)
-        if ml :
-            if len (x) == 1 :
+        if ml:
+            if len (x) == 1:
                 bp = ax1.boxplot (nev [0] / 1000, positions = x)
-            else :
+            else:
                 bp = ax1.boxplot (nev / 1000, positions = x, widths = tick)
             plt.ylabel \
                 ('Evals (thousands)', color = bp ['medians'][0].get_color ())
         ax1.set_xlim (xmin - tick / 2, xmax + tick / 2, auto = True)
         ax2 = ax1.twinx ()
-        if len (x) == 1 :
+        if len (x) == 1:
             p, = ax2.plot   (x, y2, 'o', markersize = 5)
-        else :
+        else:
             p, = ax2.plot   (x, y2)
         plt.ylabel ('Successes (%)', color = p.get_color ())
         plt.show ()
@@ -186,7 +188,7 @@ class Eval_Data :
 
 # end class Eval_Data
 
-def main () :
+def main ():
     cmd = ArgumentParser ()
     cmd.add_argument \
         ( 'filename'
@@ -268,5 +270,5 @@ def main () :
     ed.plot_eval_success ()
 # end def main
 
-if __name__ == '__main__' :
+if __name__ == '__main__':
     main ()
