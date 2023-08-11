@@ -26,10 +26,29 @@ class Filter_Bound (object):
         self.x = (a * (xmax - xmin) + xmin) * 2 * np.pi
         self.y = a * (ymax - ymin) + ymin
         if xx:
-            self.x = np.append (self.x, np.array (xx) * 2 * np.pi)
-            self.y = np.append (self.y, [self.interpolate (k) for k in xx])
-
+            self.append (*xx)
     # end def __init__
+
+    @classmethod
+    def Parse (cls, s):
+        args = s.split (',')
+        l = len (args)
+        if not 4 <= l <= 6:
+            raise ValueError ("Invalid number of parameters: %d" % l)
+        xmin, xmax, ymin, ymax = (float (x) for x in args [:4])
+        n = 31
+        if l > 4:
+            n = int (args [4])
+        use_cos = False
+        if l > 5:
+            use_cos = bool (int (args [5]))
+        return cls (xmin, xmax, ymin, ymax, n, use_cos)
+    # end def Parse
+
+    def append (self, *xx):
+        self.x = np.append (self.x, np.array (xx) * 2 * np.pi)
+        self.y = np.append (self.y, [self.interpolate (k) for k in xx])
+    # end def append
 
     def interpolate (self, x):
         assert self.xmin <= x <= self.xmax
@@ -60,6 +79,10 @@ class Filter_Bounds (object):
         self.x = np.array (sorted (self.by_x))
         self.y = np.array ([self.by_x [i] for i in self.x])
     # end def __init__
+
+    def __bool__ (self):
+        return len (self.x) > 0
+    # end def __bool__
 
     def add_offset (self, offset):
         self.y = self.y + offset

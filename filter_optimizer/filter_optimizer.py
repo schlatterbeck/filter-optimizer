@@ -28,8 +28,8 @@ class Filter_Opt (pga.PGA, autosuper):
         self.last_best  = 1-6
         self.stag_count = 0
         self.args       = args
-        self.npoles     = 4
-        self.nzeros     = 5
+        self.npoles     = args.poles
+        self.nzeros     = args.zeros
         self.do_stop    = False
         # parameters in the form radius, angle
         # first the zeros then the poles
@@ -44,7 +44,7 @@ class Filter_Opt (pga.PGA, autosuper):
             ini.append ((0, 0.999))
             ini.append ((0, 0.5))
         de_cross_type = pga.PGA_DE_CROSSOVER_BIN
-        if self.args.use_exponential_crossover:
+        if self.args.exponential_crossover:
             de_cross_type = pga.PGA_DE_CROSSOVER_EXP
         v = self.args.de_variant
         if v == 'eo':
@@ -91,11 +91,27 @@ class Filter_Opt (pga.PGA, autosuper):
             d ['stopping_rule_types'] = stop
         if args.max_evals and not args.max_generations:
             d ['max_GA_iter'] = 0x7FFFFFFF
-        super (self.__class__, self).__init__ \
-            (float, 2 * (self.npoles + self.nzeros), **d)
-        self.x  = []
-        self.yu = []
-        self.yl = []
+        super ().__init__ (float, 2 * (self.npoles + self.nzeros), **d)
+        self.udb = Filter_Bounds (*self.args.magnitude_upper_bound)
+        self.ldb = Filter_Bounds (*self.args.magnitude_lower_bound)
+        self.udelay = Filter_Bounds (*self.args.delay_upper_bound)
+        self.ldelay = Filter_Bounds (*self.args.delay_lower_bound)
+        if not (self.udb or self.ldb or self.udelay or self.ldelay):
+            self.default_constraints ()
+        self.dbx = list (sorted (set (np.concatenate
+            ((self.ldb.x, self.udb.x)))))
+        self.delay_x = list (sorted (set (np.concatenate
+            ((self.udelay.x, self.ldelay.x)))))
+        # Pre-Filter, only makes sense for original example
+        self.fir  = \
+            [ -0.033271, -0.019816,  0.169865,  0.415454
+            ,  0.415454,  0.169865, -0.019816, -0.033271
+            ]
+        fir_w, self.fir_h = signal.freqz (self.fir, [1.0], self.dbx)
+        self.a0 = self.args.gain
+    # end def __init__
+
+    def default_constraints (self):
         self.udb = Filter_Bounds \
             ( Filter_Bound \
                 ( 0.0,     0.04938, 0.01,  0.025
@@ -181,8 +197,6 @@ class Filter_Opt (pga.PGA, autosuper):
                 )
             , is_lower = True
             )
-        self.dbx = list (sorted (set (np.concatenate
-            ((self.ldb.x, self.udb.x)))))
         self.udelay = Filter_Bounds \
             ( Filter_Bound \
                 ( 0.0, 0.284,  0.10125,  0.30375, 17
@@ -196,15 +210,7 @@ class Filter_Opt (pga.PGA, autosuper):
                 )
             , is_lower = True
             )
-        self.delay_x = list (sorted (set (np.concatenate
-            ((self.udelay.x, self.ldelay.x)))))
-        self.fir  = \
-            [-0.033271, -0.019816, 0.169865, 0.415454
-            , 0.415454, 0.169865, -0.019816, -0.033271
-            ]
-        fir_w, self.fir_h = signal.freqz (self.fir, [1.0], self.dbx)
-        self.a0 = self.args.gain
-    # end def __init__
+    # end def default_constraints
 
     def phenotype (self, p, pop):
         def ga (i):
@@ -369,18 +375,37 @@ class Filter_Opt (pga.PGA, autosuper):
 # end class Filter_Opt
 
 def main ():
+    constraint_text = \
+        """ gets 4 mandatory parameters separated with comma: min-x,
+            max-x, min-y, max-y and two optional parameters: The number of
+            points (default 31) and if we should apply raised cosine
+            transform (making the points tighter at the bounds). Can be
+            specified multiple times
+        """
     cmd = ArgumentParser ()
     cmd.add_argument \
-        ( '-C', '--crossover-rate'
+        ( '--crossover-rate'
         , help    = "Rate of DE crossover, default=%(default)s"
         , type    = float
         , default = 1.0
         )
     cmd.add_argument \
-        ( '-d', '--de-variant'
+        ( '--de-variant'
         , help    = "Variant of DE algorithm, "
                     "one of rand/best/eo default=%(default)s"
         , default = 'best'
+        )
+    cmd.add_argument \
+        ( '-L', '--delay-lower-bound'
+        , help    = "Lower bound for delay in samples, " + constraint_text
+        , default = []
+        , action  = 'append'
+        )
+    cmd.add_argument \
+        ( '-U', '--delay-upper-bound'
+        , help    = "Upper bound for delay in samples, " + constraint_text
+        , default = []
+        , action  = 'append'
         )
     cmd.add_argument \
         ( '-D', '--dither'
@@ -389,35 +414,16 @@ def main ():
         , type    = float
         )
     cmd.add_argument \
-        ( '-e', '--use-exponential-crossover'
-        , help    = "Use exp crossover (instead of bin)"
-        , default = False
-        , action  = 'store_true'
-        )
-    cmd.add_argument \
-        ( '-i', '--dither-per-individual'
+        ( '--dither-per-individual'
         , help    = "Use dither per individual not per generation"
         , default = False
         , action  = 'store_true'
         )
     cmd.add_argument \
-        ( '-J', '--jitter'
-        , help    = "Jitter value to use, default=%(default)s"
-        , default = 0.001
-        , type    = float
-        )
-    cmd.add_argument \
-        ( '-G', '--max-generations'
-        , type    = int
-        , help    = "Maximum number of generations, default=%(default)s"
-        , default = 0
-        )
-    cmd.add_argument \
-        ( '-F', '--scale-factor'
-        , help    = "Base DE scale factor F, default=%(default)s "
-                    "(popsize-dependent part is subtracted)"
-        , default = 0.87
-        , type    = float
+        ( '--exponential-crossover'
+        , help    = "Use exp crossover (instead of bin)"
+        , default = False
+        , action  = 'store_true'
         )
     cmd.add_argument \
         ( '-k', '--gain'
@@ -427,13 +433,37 @@ def main ():
         , type    = float
         )
     cmd.add_argument \
+        ( '-J', '--jitter'
+        , help    = "Jitter value to use, default=%(default)s"
+        , default = 0.001
+        , type    = float
+        )
+    cmd.add_argument \
+        ( '-l', '--magnitude-lower-bound'
+        , help    = "Lower bound for magnitude in dB, " + constraint_text
+        , default = []
+        , action  = 'append'
+        )
+    cmd.add_argument \
+        ( '-u', '--magnitude-upper-bound'
+        , help    = "Upper bound for magnitude in dB, " + constraint_text
+        , default = []
+        , action  = 'append'
+        )
+    cmd.add_argument \
         ( '-m', '--max-evals'
         , help    = "Maximum number of evaluations default=%(default)s"
         , default = 500000
         , type    = int
         )
     cmd.add_argument \
-        ( '-n', '--max-no-change'
+        ( '--max-generations'
+        , type    = int
+        , help    = "Maximum number of generations, default=%(default)s"
+        , default = 0
+        )
+    cmd.add_argument \
+        ( '--max-no-change'
         , help    = "Maximum number of generations without change before "
                     "stopping default=%(default)s"
         , default = 0
@@ -446,17 +476,30 @@ def main ():
         , action  = "store_true"
         )
     cmd.add_argument \
-        ( '-P', '--scale-with-popsize'
+        ( '-p', '--popsize'
+        , type    = int
+        , help    = "Population size, default=%(default)s"
+        , default = 150
+        )
+    cmd.add_argument \
+        ( '-F', '--scale-factor'
+        , help    = "Base DE scale factor F, default=%(default)s "
+                    "(popsize-dependent part is subtracted)"
+        , default = 0.87
+        , type    = float
+        )
+    cmd.add_argument \
+        ( '--scale-with-popsize'
         , help    = "Subtract this value * popsize from scale-factor F."
                     " Set to 0 for turning off, default=%(default)s"
         , default = 0.0005
         , type    = float
         )
     cmd.add_argument \
-        ( '-p', '--popsize'
+        ( '-P', '--poles'
         , type    = int
-        , help    = "Population size, default=%(default)s"
-        , default = 150
+        , help    = "Number of poles, default=%(default)s"
+        , default = 4
         )
     cmd.add_argument \
         ( '-R', '--random-seed'
@@ -471,12 +514,28 @@ def main ():
         , action  = 'store_true'
         )
     cmd.add_argument \
-        ( '-u', '--use-prefilter'
+        ( '--use-prefilter'
         , help    = "Use pre-filter in addition to optimized filter"
         , default = False
         , action  = 'store_true'
         )
+    cmd.add_argument \
+        ( '-Z', '--zeros'
+        , type    = int
+        , help    = "Number of zeros, default=%(default)s"
+        , default = 5
+        )
     args = cmd.parse_args ()
+    for t in ('delay', 'magnitude'):
+        for b in ('lower_bound', 'upper_bound'):
+            n = '_'.join ((t, b))
+            r = []
+            for v in getattr (args, n):
+                try:
+                    r.append (Filter_Bound.Parse (v))
+                except ValueError as err:
+                    print (cmd.usage)
+                    exit ("Invalid value for %s: %s" % (n, v))
     pg = Filter_Opt (args)
     pg.run ()
 # end def main
