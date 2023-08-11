@@ -91,10 +91,14 @@ class Filter_Opt (pga.PGA, autosuper):
         if args.max_evals and not args.max_generations:
             d ['max_GA_iter'] = 0x7FFFFFFF
         super ().__init__ (float, 2 * (self.npoles + self.nzeros), **d)
-        self.udb = Filter_Bounds (*self.args.magnitude_upper_bound)
-        self.ldb = Filter_Bounds (*self.args.magnitude_lower_bound)
-        self.udelay = Filter_Bounds (*self.args.delay_upper_bound)
-        self.ldelay = Filter_Bounds (*self.args.delay_lower_bound)
+        self.udb = Filter_Bounds \
+            (*self.args.magnitude_upper_bound)
+        self.ldb = Filter_Bounds \
+            (*self.args.magnitude_lower_bound, is_lower = True)
+        self.udelay = Filter_Bounds \
+            (*self.args.delay_upper_bound)
+        self.ldelay = Filter_Bounds \
+            (*self.args.delay_lower_bound, is_lower = True)
         if not (self.udb or self.ldb or self.udelay or self.ldelay):
             self.default_constraints ()
         self.dbx = list (sorted (set (np.concatenate
@@ -506,7 +510,16 @@ def main ():
         , default = 42
         )
     cmd.add_argument \
-        ( '-s', '--sort-population'
+        ( '--dont-scale-by-pi'
+        , help    = "Scale X-values for constraints with 2*pi,"
+                    " Values are either 0 <= x <= 0.5 and scaling is"
+                    " performed or 0 <= x <= pi if no scaling is performed"
+        , dest    = 'scale_by_pi'
+        , default = True
+        , action  = 'store_false'
+        )
+    cmd.add_argument \
+        ( '--sort-population'
         , help    = "Sort population by angle/radius"
         , default = False
         , action  = 'store_true'
@@ -530,10 +543,12 @@ def main ():
             r = []
             for v in getattr (args, n):
                 try:
-                    r.append (Filter_Bound.Parse (v))
+                    r.append \
+                        (Filter_Bound.Parse (v, scale_pi = args.scale_by_pi))
                 except ValueError as err:
                     print (cmd.usage)
                     exit ("Invalid value for %s: %s" % (n, v))
+                setattr (args, n, r)
     pg = Filter_Opt (args)
     pg.run ()
 # end def main

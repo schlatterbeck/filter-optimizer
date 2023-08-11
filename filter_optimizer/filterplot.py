@@ -15,22 +15,28 @@ def update_conjugate_complex (numbers):
 class Filter_Bound (object):
 
     def __init__ \
-        (self, xmin, xmax, ymin, ymax, n = 6, use_cos = False, xx = []):
+        ( self, xmin, xmax, ymin, ymax
+        , n = 6, use_cos = False, xx = []
+        , scale_pi = True
+        ):
         self.xmin = xmin
         self.xmax = xmax
         self.ymin = ymin
         self.ymax = ymax
+        self.vals = [xmin, xmax, ymin, ymax]
         a = np.array (range (n)) / (n - 1.0)
         if use_cos:
             a = np.cos (a * np.pi) / -2.0 + 0.5
-        self.x = (a * (xmax - xmin) + xmin) * 2 * np.pi
+        self.x = a * (xmax - xmin) + xmin
+        if scale_pi:
+            self.x *= 2 * np.pi
         self.y = a * (ymax - ymin) + ymin
         if xx:
             self.append (*xx)
     # end def __init__
 
     @classmethod
-    def Parse (cls, s):
+    def Parse (cls, s, scale_pi = True):
         args = s.split (',')
         l = len (args)
         if not 4 <= l <= 6:
@@ -42,8 +48,13 @@ class Filter_Bound (object):
         use_cos = False
         if l > 5:
             use_cos = bool (int (args [5]))
-        return cls (xmin, xmax, ymin, ymax, n, use_cos)
+        return cls (xmin, xmax, ymin, ymax, n, use_cos, scale_pi = scale_pi)
     # end def Parse
+
+    def __str__ (self):
+        return ','.join (str (x) for x in self.vals)
+    # end def __str__
+    __repr__ = __str__
 
     def append (self, *xx):
         self.x = np.append (self.x, np.array (xx) * 2 * np.pi)
@@ -84,6 +95,12 @@ class Filter_Bounds (object):
         return len (self.x) > 0
     # end def __bool__
 
+    def __str__ (self):
+        r = [str (b) for b in self.bounds]
+        return '[' + '; '.join (r) + ']'
+    # end def __str__
+    __repr__ = __str__
+
     def add_offset (self, offset):
         self.y = self.y + offset
     # end def add_offset
@@ -116,9 +133,9 @@ def plot_response \
     , constraints = []
     ):
     fig = plt.figure ()
-    ax1 = fig.add_subplot (111)
+    ax  = fig.add_subplot (111)
     if logx:
-        ax1.set_xscale ('log')
+        ax.set_xscale ('log')
     t = 'Frequency response'
     if title:
         if title.startswith ('-'):
@@ -133,25 +150,25 @@ def plot_response \
         if fs == 1.0:
             xlabel = '$\\Omega$'
     for x, y in constraints:
-        ax1.plot (x, y, 'g')
+        ax.plot (x, y, 'g')
     if logy:
-        ax1.plot (w, 20 * np.log10 (abs (h)), 'b')
+        ax.plot (w, 20 * np.log10 (abs (h)), 'b')
         plt.ylabel ('Amplitude (dB)', color = 'b')
     else:
-        ax1.plot (w, abs (h), 'b')
+        ax.plot (w, abs (h), 'b')
         plt.ylabel ('Amplitude (lin.)', color = 'b')
     plt.xlabel (xlabel)
     plt.grid (which = 'both')
 
     if do_angle:
-        ax2 = ax1.twinx ()
+        ax2 = ax.twinx ()
         angles = np.unwrap (np.angle (h))
         ax2.plot (w, angles, 'g')
         plt.ylabel ('Angle (rad)', color = 'g')
     plt.axis ('tight')
-    ax1.set_xlim (xmin, xmax, auto = True)
+    ax.set_xlim (xmin, xmax, auto = True)
     if ymin is not None or ymax is not None:
-        ax1.set_ylim (ymin, ymax, auto = True)
+        ax.set_ylim (ymin, ymax, auto = True)
     plt.show ()
 # end def plot_response
 
@@ -162,9 +179,9 @@ def plot_delay \
     ):
 
     fig = plt.figure ()
-    ax1 = fig.add_subplot (111)
+    ax  = fig.add_subplot (111)
     if logx:
-        ax1.set_xscale ('log')
+        ax.set_xscale ('log')
     t = 'Group delay'
     if title:
         if title.startswith ('-'):
@@ -205,7 +222,7 @@ def plot_delay \
                 delta = dd
         for b in bounds:
             b.add_offset (delta)
-            ax1.plot (b.x * fs / (2 * np.pi), b.y, 'g')
+            ax.plot (b.x * fs / (2 * np.pi), b.y, 'g')
         if auto_ylimit and not ymin and not ymax:
             miny = min (bounds [-1].y)
             maxy = max (bounds [0].y)
@@ -221,15 +238,16 @@ def plot_delay \
 
     plt.grid ()
     plt.axis ('tight')
-    ax1.set_xlim (xmin, xmax, auto = True)
+    ax.set_xlim (xmin, xmax, auto = True)
     if ymin is not None or ymax is not None:
-        ax1.set_ylim (ymin, ymax, auto = True)
+        ax.set_ylim (ymin, ymax, auto = True)
     plt.show ()
 # end def plot_delay
 
-def pole_zero_plot (poles, zeros, limit = 1e6, title = '', show_uc = True):
+def pole_zero_plot \
+    (poles, zeros, limit = 1e6, title = '', show_uc = True, ax = None):
     fig = plt.figure ()
-    ax1 = fig.add_subplot (111)
+    ax  = fig.add_subplot (111)
     poles = np.array (poles)
     zeros = np.array (zeros)
     m1 = m2 = 1
@@ -243,9 +261,9 @@ def pole_zero_plot (poles, zeros, limit = 1e6, title = '', show_uc = True):
     if show_uc:
         c1 = plt.Circle \
             ((0, 0), 1, color = 'black', fill = False, linewidth = 0.25)
-        ax1.add_artist (c1)
-    ax1.plot (np.real (zeros), np.imag (zeros), 'ob')
-    ax1.plot (np.real (poles), np.imag (poles), 'xr')
+        ax.add_artist (c1)
+    ax.plot (np.real (zeros), np.imag (zeros), 'ob')
+    ax.plot (np.real (poles), np.imag (poles), 'xr')
     plt.legend (['Zeros', 'Poles'], loc=2)
     t = 'Pole / Zero Plot'
     if title:
@@ -257,6 +275,6 @@ def pole_zero_plot (poles, zeros, limit = 1e6, title = '', show_uc = True):
     plt.xlim (-m, m)
     plt.ylim (-m, m)
     #plt.gca ().set_aspect ('equal', adjustable='box')
-    ax1.set_aspect ('equal', adjustable='box')
+    ax.set_aspect ('equal', adjustable='box')
     plt.show()
 # end def pole_zero_plot
