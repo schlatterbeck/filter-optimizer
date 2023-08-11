@@ -24,7 +24,6 @@ class Filter_Opt (pga.PGA, autosuper):
     """
 
     def __init__ (self, args):
-        self.neval      = 0
         self.last_best  = 1-6
         self.stag_count = 0
         self.args       = args
@@ -228,7 +227,6 @@ class Filter_Opt (pga.PGA, autosuper):
     # end def phenotype
 
     def evaluate (self, p, pop):
-        self.neval += 1
         zeros, poles, b, a = self.phenotype (p, pop)
         wgd, gd = signal.group_delay ((b, a), self.delay_x)
         w, h    = signal.freqz       (b, a, self.dbx)
@@ -276,7 +274,7 @@ class Filter_Opt (pga.PGA, autosuper):
         if not self.args.optimize_further and best_ev == 0:
             self.do_stop = True
             return True
-        if self.args.max_evals and self.neval >= self.args.max_evals:
+        if self.args.max_evals and self.eval_count >= self.args.max_evals:
             self.do_stop = True
             return True
         # Experimental early stopping when stagnating
@@ -352,7 +350,7 @@ class Filter_Opt (pga.PGA, autosuper):
         #zeros, poles, b, a = self.phenotype (p, pop)
         print \
             ( "Iter: %s Evals: %s Stag: %s"
-            % (self.GA_iter, self.neval, self.stag_count)
+            % (self.GA_iter, self.eval_count, self.stag_count)
             , file = f
             )
         if self.do_stop:
