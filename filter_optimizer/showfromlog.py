@@ -108,7 +108,9 @@ class Experiment:
                 )
     # end def Parse
 
-    def display (self, fine = False, auto_ylimit = True):
+    displayvars = ('auto_ylimit', 'scatter')
+
+    def display (self, fine = False, **kw):
         filterplot.update_conjugate_complex (self.zeros)
         filterplot.update_conjugate_complex (self.poles)
         (b, a) = signal.zpk2tf (self.zeros, self.poles, self.a0)
@@ -128,6 +130,7 @@ class Experiment:
         if self.title:
             t = t + '\n' + self.title
         d = dict (fs = 1.0, title = t, bounds = [self.mag_l, self.mag_u])
+        d.update (scatter = kw ['scatter'])
         if fine:
             filterplot.plot_response \
                 (w, h, xmax = 0.4,  ymax = 0.1, ymin = -0.1, **d)
@@ -135,7 +138,7 @@ class Experiment:
                 (w, h, xmin = 0.25, ymax = -5, **d)
         else:
             filterplot.plot_response (w, h, **d)
-        d.update (auto_ylimit = auto_ylimit)
+        d.update (auto_ylimit = kw ['auto_ylimit'])
         d ['bounds'] = [self.del_l, self.del_u]
         filterplot.plot_delay (wgd, gd, xmax = 0.35, **d)
         filterplot.pole_zero_plot (self.poles, self.zeros)
@@ -156,6 +159,12 @@ def main (argv = sys.argv [1:]):
         , action  = 'store_false'
         )
     cmd.add_argument \
+        ( '--scatter'
+        , help    = "Plot as scatter plot not line"
+        , default = False
+        , action  = 'store_true'
+        )
+    cmd.add_argument \
         ( '--show-failed'
         , help    = "Show experiments that didn't find a solution"
         , default = False
@@ -168,7 +177,7 @@ def main (argv = sys.argv [1:]):
             if ex is None:
                 break
             if ex.is_valid or args.show_failed:
-                ex.display (auto_ylimit = args.auto_ylimit)
+                ex.display (**vars (args))
 # end def main
 
 if __name__ == '__main__':

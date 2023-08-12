@@ -78,12 +78,14 @@ class Filter_Bound (object):
         return (d * (self.ymax - self.ymin) + self.ymin)
     # end def interpolate
 
-    def plot (self, ax, scatter = False):
+    def plot (self, ax, scatter = False, offset = 0, xscale = 1):
         if scatter:
-            raise NotImplementedError ('Scatter plot not yet implemented')
+            X = self.x * xscale / (2 * np.pi)
+            Y = self.y + offset
+            ax.scatter (X, Y, c = 'g')
         else:
-            X = np.array ([self.xmin, self.xmax])
-            Y = np.array ([self.ymin, self.ymax])
+            X = np.array ([self.xmin, self.xmax]) * xscale
+            Y = np.array ([self.ymin, self.ymax]) + offset
             if not self.scale_by_pi:
                 X /= 2 * np.pi
             ax.plot (X, Y, 'g')
@@ -163,9 +165,9 @@ class Filter_Bounds (object):
         return self.bounds [idx].interpolate (x)
     # end def interpolate
 
-    def plot (self, ax, scatter = False):
+    def plot (self, ax, scatter = False, offset = 0, xscale = 1):
         for b in self.bounds:
-            b.plot (ax, scatter)
+            b.plot (ax, scatter, offset = offset, xscale = xscale)
     # end def plot
 
     def y_transform (self, offset = 0, multiplier = 1):
@@ -279,7 +281,7 @@ default_lower_delay = Filter_Bounds \
 
 def plot_response \
     ( w, h
-    , title = '', do_angle = False
+    , title = '', do_angle = False, scatter = False
     , fs    = None
     , logx  = False, logy = True
     , xmin  = None,  xmax = None
@@ -304,7 +306,7 @@ def plot_response \
         if fs == 1.0:
             xlabel = '$\\Omega$'
     for b in bounds:
-        b.plot (ax)
+        b.plot (ax, scatter = scatter)
     if logy:
         ax.plot (w, 20 * np.log10 (abs (h)), 'b')
         plt.ylabel ('Amplitude (dB)', color = 'b')
@@ -329,7 +331,7 @@ def plot_response \
 def plot_delay \
     ( w, d, title = "", fs = None
     , logx = False, xmin = 0.0, xmax = None, ymin = None, ymax = None
-    , bounds = [], auto_ylimit = True
+    , bounds = [], auto_ylimit = True, scatter = False
     ):
 
     fig = plt.figure ()
@@ -368,7 +370,11 @@ def plot_delay \
                 if delta is None or dd > delta:
                     delta = dd
         for b in bounds:
-            ax.plot (b.x * fs / (2 * np.pi), b.y_transform (delta), 'g')
+            #ax.plot (b.x * fs / (2 * np.pi), b.y_transform (delta), 'g')
+            pd = dict (scatter = scatter)
+            if fs is not None:
+                pd.update (xscale = fs)
+            b.plot (ax, offset = delta, **pd)
         if auto_ylimit and not ymin and not ymax:
             miny = min (min (b.y_transform (delta) for b in lbounds))
             maxy = max (max (b.y_transform (delta) for b in ubounds))

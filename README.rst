@@ -39,6 +39,28 @@ experimenting with what I'd learned. These include:
   ever hope to hear the difference). This analyzes RIAA implementations
   from various sources.
 
+Example call
+------------
+
+::
+
+    mpirun --machinefile ~/.mpi-openmpi-cat  --np 8 \
+    python3 -m filter_optimizer.filter_optimizer
+    -u 0,0.04938,0.01,0.025,9 -u 0.04938,0.2716,0.025,0.025,73
+    -u 0.2716,0.3334,0.05,0.05,151 -u 0.3334,0.395,-12,-12,43
+    -u 0.395,0.5,-40,-40,37
+    -l 0.0,0.04938,-0.01,-0.025,9 -l 0.04938,0.2716,-0.025,-0.025,43
+    -l 0.2716,0.284,-0.05,-0.05
+    -U 0.0,0.284,0.10125,0.30375,17 -L 0.0,0.284,-0.10125,-0.30375,17 -R1
+    >! byparam.out
+
+::
+    mpirun --machinefile ~/.mpi-openmpi-cat  --np 8 filter-optimizer -P
+    4 -Z 4 -l 0,1,-0.025,-0.025,100 -u 0,1,0.025,0.025,100
+    -l1,1.1739,-12,-12 -u 1,1.3913,5,5,100 -u 1.3913,3.14159265,-40,-40
+    -L 0,1,-1.25,-1.25 -U 0,1,1.25,1.25 -R1 --dont-scale-by-pi >!
+    01vond.out
+
 .. [1] John G. Proakis and Dimitris G. Manolakis. Digital Signal
     Processing: Principles, Algorithms, and Applications. Pearson
     Prentice Hall, Upper Saddle River, New Jersey, fourth edition, 2007.
