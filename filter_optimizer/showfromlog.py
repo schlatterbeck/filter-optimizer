@@ -32,8 +32,12 @@ class Experiment:
             self.del_u = filterplot.default_upper_delay.copy ()
         rz = range (0, 2 * nzeros, 2)
         rp = range (0, 2 * npoles, 2)
-        zeros = [gene [k]    * np.e ** (2j * np.pi * gene [k+1])  for k in rz]
-        poles = [gene [k+10] * np.e ** (2j * np.pi * gene [k+11]) for k in rp]
+        zeros = [ gene [k]          * np.e ** (2j * np.pi
+                * gene [k+1])          for k in rz
+                ]
+        poles = [ gene [k+2*nzeros] * np.e ** (2j * np.pi
+                * gene [k+2*nzeros+1]) for k in rp
+                ]
         self.zeros = zeros
         self.poles = poles
     # end def __init__
@@ -104,7 +108,7 @@ class Experiment:
                 )
     # end def Parse
 
-    def display (self, fine = False):
+    def display (self, fine = False, auto_ylimit = True):
         filterplot.update_conjugate_complex (self.zeros)
         filterplot.update_conjugate_complex (self.poles)
         (b, a) = signal.zpk2tf (self.zeros, self.poles, self.a0)
@@ -131,6 +135,7 @@ class Experiment:
                 (w, h, xmin = 0.25, ymax = -5, **d)
         else:
             filterplot.plot_response (w, h, **d)
+        d.update (auto_ylimit = auto_ylimit)
         d ['bounds'] = [self.del_l, self.del_u]
         filterplot.plot_delay (wgd, gd, xmax = 0.35, **d)
         filterplot.pole_zero_plot (self.poles, self.zeros)
@@ -142,6 +147,13 @@ def main (argv = sys.argv [1:]):
     cmd.add_argument \
         ( 'filename'
         , help    = 'File to parse, can contain multiple experiments'
+        )
+    cmd.add_argument \
+        ( '--no-auto-ylimit'
+        , help    = "Do not auto-limit the delay plot on Y-axis"
+        , dest    = 'auto_ylimit'
+        , default = True
+        , action  = 'store_false'
         )
     cmd.add_argument \
         ( '--show-failed'
@@ -156,7 +168,7 @@ def main (argv = sys.argv [1:]):
             if ex is None:
                 break
             if ex.is_valid or args.show_failed:
-                ex.display ()
+                ex.display (auto_ylimit = args.auto_ylimit)
 # end def main
 
 if __name__ == '__main__':

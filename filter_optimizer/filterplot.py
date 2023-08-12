@@ -98,7 +98,11 @@ class Filter_Bounds (object):
         self.lower  = [x.xmin for x in self.bounds]
         self.is_lower = is_lower
         self.by_x = {}
+        self.scale_by_pi = None
         for b in bounds:
+            if self.scale_by_pi is None:
+                self.scale_by_pi = b.scale_by_pi
+            assert self.scale_by_pi == b.scale_by_pi
             for x, y in zip (b.x, b.y):
                 if x in self.by_x:
                     if self.is_lower:
@@ -355,6 +359,8 @@ def plot_delay \
         for x, y in zip (w, d):
             for b in ubounds:
                 try:
+                    if not b.scale_by_pi:
+                        x *= (2 * np.pi)
                     yb = b.interpolate (x)
                 except ValueError:
                     continue
