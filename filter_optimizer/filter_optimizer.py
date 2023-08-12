@@ -7,7 +7,7 @@ import pga
 import sys
 import numpy as np
 from rsclib.autosuper import autosuper
-from .filterplot import Filter_Bound, Filter_Bounds
+from . import filterplot
 
 class Filter_Opt (pga.PGA, autosuper):
     """ Optimize a filter with differential evolution
@@ -91,13 +91,13 @@ class Filter_Opt (pga.PGA, autosuper):
         if args.max_evals and not args.max_generations:
             d ['max_GA_iter'] = 0x7FFFFFFF
         super ().__init__ (float, 2 * (self.npoles + self.nzeros), **d)
-        self.udb = Filter_Bounds \
+        self.udb = filterplot.Filter_Bounds \
             (*self.args.magnitude_upper_bound)
-        self.ldb = Filter_Bounds \
+        self.ldb = filterplot.Filter_Bounds \
             (*self.args.magnitude_lower_bound, is_lower = True)
-        self.udelay = Filter_Bounds \
+        self.udelay = filterplot.Filter_Bounds \
             (*self.args.delay_upper_bound)
-        self.ldelay = Filter_Bounds \
+        self.ldelay = filterplot.Filter_Bounds \
             (*self.args.delay_lower_bound, is_lower = True)
         if not (self.udb or self.ldb or self.udelay or self.ldelay):
             self.default_constraints ()
@@ -115,104 +115,10 @@ class Filter_Opt (pga.PGA, autosuper):
     # end def __init__
 
     def default_constraints (self):
-        self.udb = Filter_Bounds \
-            ( Filter_Bound \
-                ( 0.0,     0.04938, 0.01,  0.025
-                , xx = (0.01,   0.02,  0.03, 0.04)
-                )
-            , Filter_Bound \
-                ( 0.04938, 0.2716,  0.025, 0.025, 73
-                , xx = ( 0.05
-                       , 0.07,   0.076,   0.0765, 0.077
-                       , 0.0786, 0.07865, 0.0787, 0.079
-                       , 0.08,   0.0808,  0.0809
-                       , 0.10,   0.11,    0.12,   0.13,   0.15, 0.17, 0.18, 0.19
-                       , 0.1995, 0.2,     0.205,  0.21,   0.215
-                       , 0.2162, 0.2163,  0.2164, 0.217,  0.218
-                       , 0.22,   0.222
-                       , 0.223,  0.224,   0.225,  0.226,  0.227, 0.228
-                       , 0.23,   0.26,    0.2625, 0.2675
-                       )
-                )
-            , Filter_Bound \
-                ( 0.2716,  0.3334,  0.05,  0.05,  43
-                , xx = ( 0.278,  0.279,   0.2795,  0.28,   0.2805, 0.281
-                       , 0.284,  0.28441, 0.2845,  0.285,  0.286,  0.2865
-                       , 0.294,  0.295,   0.2955
-                       , 0.296,  0.2965,  0.297,   0.298,  0.3
-                       , 0.306,  0.315,   0.316,   0.317,  0.318,  0.3194
-                       , 0.32,   0.3205,  0.3206,  0.321
-                       , 0.3211, 0.3212,  0.3213,  0.3214, 0.3215, 0.3218
-                       , 0.322,  0.3225,  0.32275, 0.3228
-                       , 0.323,  0.3232,  0.3234,  0.3236, 0.3238
-                       , 0.324,  0.3242,  0.3243,  0.3244
-                       , 0.325 , 0.3254,  0.3258
-                       , 0.3262, 0.32625
-                       , 0.3265, 0.327,   0.3272, 0.3273, 0.3274
-                       )
-                )
-            , Filter_Bound \
-                ( 0.3334,  0.395, -12,   -12,     43
-                , xx = ( 0.33341, 0.33342, 0.33343, 0.33344
-                       , 0.34,    0.3405
-                       , 0.342,   0.3425,  0.3426, 0.3427, 0.3428
-                       , 0.343,   0.34325, 0.3434
-                       , 0.344,   0.3443,  0.3446, 0.3447
-                       , 0.345,   0.3454
-                       )
-                )
-            , Filter_Bound \
-                ( 0.395,   0.5,   -40,   -40,     37
-                , xx = ( 0.39501, 0.39502, 0.39503
-                       , 0.4048,  0.405
-                       , 0.422,   0.4222,  0.4225
-                       , 0.423,   0.42325, 0.4236, 0.4237, 0.4238
-                       , 0.424,   0.4246,  0.4247, 0.4248
-                       , 0.425,   0.426
-                       , 0.4272,  0.4273
-                       , 0.498,   0.499
-                       )
-                )
-            )
-        self.ldb = Filter_Bounds \
-            ( Filter_Bound (0.0,     0.04938, -0.01,  -0.025)
-            , Filter_Bound \
-                ( 0.04938, 0.2716,  -0.025, -0.025, 43
-                , xx = ( 0.11,  0.12,   0.13,  0.14,  0.141
-                       , 0.146, 0.147,  0.148
-                       , 0.15,  0.1525, 0.153, 0.152
-                       , 0.155, 0.157
-                       , 0.158, 0.15832, 0.15833, 0.15834
-                       , 0.15905
-                       , 0.162, 0.163
-                       , 0.245, 0.246,  0.247, 0.248, 0.249
-                       , 0.25,  0.255
-                       , 0.26,  0.265,  0.268, 0.269
-                       , 0.27,  0.2705
-                       , 0.271597, 0.271598, 0.271599
-                       )
-                )
-            , Filter_Bound \
-                ( 0.2716,  0.284,   -0.05,  -0.05
-                , xx = ( 0.275, 0.276, 0.277, 0.278, 0.279
-                       , 0.28,  0.281, 0.282, 0.283, 0.2835
-                       )
-                )
-            , is_lower = True
-            )
-        self.udelay = Filter_Bounds \
-            ( Filter_Bound \
-                ( 0.0, 0.284,  0.10125,  0.30375, 17
-                , xx = (0.2834, 0.2835, 0.2836, 0.2837, 0.2338, 0.2839)
-                )
-            )
-        self.ldelay = Filter_Bounds \
-            ( Filter_Bound \
-                ( 0.0, 0.284, -0.10125, -0.30375, 17
-                , xx = (0.2834, 0.2835, 0.2836, 0.2837, 0.2338, 0.2839)
-                )
-            , is_lower = True
-            )
+        self.udb = filterplot.default_upper_magnitude
+        self.ldb = filterplot.default_lower_magnitude
+        self.udelay = filterplot.default_upper_delay
+        self.ldelay = filterplot.default_lower_delay
     # end def default_constraints
 
     def phenotype (self, p, pop):
@@ -543,8 +449,8 @@ def main ():
             r = []
             for v in getattr (args, n):
                 try:
-                    r.append \
-                        (Filter_Bound.Parse (v, scale_pi = args.scale_by_pi))
+                    parse = filterplot.Filter_Bound.Parse
+                    r.append (parse (v, scale_by_pi = args.scale_by_pi))
                 except ValueError as err:
                     print (cmd.usage)
                     exit ("Invalid value for %s: %s" % (n, v))
