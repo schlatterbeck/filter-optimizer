@@ -373,7 +373,7 @@ def plot_delay \
             ymax = maxy
 
     plt.plot (w, d, 'b')
-    plt.ylabel ('Delay', color = 'b')
+    plt.ylabel ('Delay (samples)', color = 'b')
     plt.xlabel (xlabel)
 
     plt.grid ()

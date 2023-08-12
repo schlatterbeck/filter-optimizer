@@ -48,6 +48,7 @@ class Experiment:
         mag_l = mag_u = del_l = del_u = ''
         prefilter   = False
         scale_by_pi = True
+        title       = None
         for line in f:
             line = line.strip ()
             if line.startswith (best):
@@ -103,7 +104,7 @@ class Experiment:
                 )
     # end def Parse
 
-    def display (self):
+    def display (self, fine = False):
         filterplot.update_conjugate_complex (self.zeros)
         filterplot.update_conjugate_complex (self.poles)
         (b, a) = signal.zpk2tf (self.zeros, self.poles, self.a0)
@@ -116,11 +117,13 @@ class Experiment:
         if self.title:
             t = t + '\n' + self.title
         d = dict (fs = 1.0, title = t, bounds = [self.mag_l, self.mag_u])
-        filterplot.plot_response (w, h, **d)
-        #filterplot.plot_response \
-        #    (w, h, xmax = 0.4,  ymax = 0.1, ymin = -0.1, **d)
-        #filterplot.plot_response \
-        #    (w, h, xmin = 0.25, ymax = -5, **d)
+        if fine:
+            filterplot.plot_response \
+                (w, h, xmax = 0.4,  ymax = 0.1, ymin = -0.1, **d)
+            filterplot.plot_response \
+                (w, h, xmin = 0.25, ymax = -5, **d)
+        else:
+            filterplot.plot_response (w, h, **d)
         d ['bounds'] = [self.del_l, self.del_u]
         filterplot.plot_delay (wgd, gd, xmax = 0.35, **d)
         filterplot.pole_zero_plot (self.poles, self.zeros)
