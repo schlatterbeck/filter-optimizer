@@ -164,7 +164,7 @@ class Filter_Bounds (object):
             b.plot (ax, scatter)
     # end def plot
 
-    def y_transform (self, offset, multiplier):
+    def y_transform (self, offset = 0, multiplier = 1):
         return self.y * multiplier + offset
     # end def y_transform
 
@@ -325,8 +325,7 @@ def plot_response \
 def plot_delay \
     ( w, d, title = "", fs = None
     , logx = False, xmin = 0.0, xmax = None, ymin = None, ymax = None
-    , bounds = [], auto_ylimit = True, d_in_samples = False
-    , as_samples = False
+    , bounds = [], auto_ylimit = True
     ):
 
     fig = plt.figure ()
@@ -347,11 +346,6 @@ def plot_delay \
         if fs == 1.0:
             xlabel = '$\\Omega$'
 
-    if not d_in_samples and as_samples:
-        d /= (2 * np.pi)
-    if d_in_samples and not as_samples:
-        d *= (2 * np.pi)
-
     # Move curve to upper bound
     bounds  = [b for b in bounds if b]
     ubounds = [b for b in bounds if not b.is_lower]
@@ -364,17 +358,14 @@ def plot_delay \
                     yb = b.interpolate (x)
                 except ValueError:
                     continue
-                if not as_samples:
-                    yb *= 2 * np.pi
                 dd = y - yb
                 if delta is None or dd > delta:
                     delta = dd
-        mul = 1 if as_samples else 2 * np.pi
         for b in bounds:
-            ax.plot (b.x * fs / (2 * np.pi), b.y_transform (delta, mul), 'g')
+            ax.plot (b.x * fs / (2 * np.pi), b.y_transform (delta), 'g')
         if auto_ylimit and not ymin and not ymax:
-            miny = min (min (b.y_transform (delta, mul) for b in lbounds))
-            maxy = max (max (b.y_transform (delta, mul) for b in ubounds))
+            miny = min (min (b.y_transform (delta) for b in lbounds))
+            maxy = max (max (b.y_transform (delta) for b in ubounds))
             dif  = (maxy - miny) * 2
             miny -= dif / 2
             maxy += dif / 2

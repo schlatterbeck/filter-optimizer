@@ -12,7 +12,6 @@ class Experiment:
     def __init__ \
         ( self, nzeros, npoles, gene
         , title = None, is_valid = True, a0 = 0.00390625, prefilter = False
-        , as_samples = False
         , mag_l = None, mag_u = None, del_l = None, del_u = None
         ):
         self.nzeros      = nzeros
@@ -22,7 +21,6 @@ class Experiment:
         self.is_valid    = is_valid
         self.a0          = a0
         self.prefilter   = prefilter
-        self.as_samples  = as_samples
         self.mag_l       = mag_l
         self.mag_u       = mag_u
         self.del_l       = del_l
@@ -41,7 +39,7 @@ class Experiment:
     # end def __init__
 
     @classmethod
-    def Parse (cls, f, as_samples = False):
+    def Parse (cls, f):
         nzeros = 5
         npoles = 4
         best = 'The Best Evaluation:'
@@ -101,7 +99,6 @@ class Experiment:
             return cls \
                 ( nzeros, npoles, gene
                 , title = title, is_valid = eval == 0, prefilter = prefilter
-                , as_samples = as_samples
                 , mag_l = mag_l, mag_u = mag_u, del_l = del_l, del_u = del_u
                 )
     # end def Parse
@@ -125,8 +122,6 @@ class Experiment:
         #filterplot.plot_response \
         #    (w, h, xmin = 0.25, ymax = -5, **d)
         d ['bounds'] = [self.del_l, self.del_u]
-        if self.as_samples:
-            d.update (as_samples = True)
         filterplot.plot_delay (wgd, gd, xmax = 0.35, **d)
         filterplot.pole_zero_plot (self.poles, self.zeros)
     # end def display
@@ -144,16 +139,10 @@ def main (argv = sys.argv [1:]):
         , default = False
         , action  = 'store_true'
         )
-    cmd.add_argument \
-        ( '--as-samples'
-        , help    = "Show delay in units of samples (not rad)"
-        , default = False
-        , action  = 'store_true'
-        )
     args = cmd.parse_args ()
     with open (args.filename, 'r') as f:
         while 1:
-            ex = Experiment.Parse (f, as_samples = args.as_samples)
+            ex = Experiment.Parse (f)
             if ex is None:
                 break
             if ex.is_valid or args.show_failed:

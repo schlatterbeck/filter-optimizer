@@ -163,16 +163,15 @@ class Filter_Opt (pga.PGA, autosuper):
         delaydelta = None
         # Shift the curve so that it touches the upper delay delta
         for xb, yb in self.udelay:
-            delta = dldict [xb] - (yb / 2 * np.pi)
+            delta = dldict [xb] - yb
             if delaydelta is None or delta > delaydelta:
                 delaydelta = delta
         # Check where the curve underflows the lower delay delta
         for xb, yb in self.ldelay:
-            d = yb / (2 * np.pi)
-            if dldict [xb] - delaydelta < d:
-                ev += (dldict [xb] - delaydelta - d) ** 2
+            if dldict [xb] - delaydelta < yb:
+                ev += (dldict [xb] - delaydelta - yb) ** 2
             elif self.args.optimize_further and not ev:
-                evf += abs (dldict [xb] - delaydelta - d) ** 0.5
+                evf += abs (dldict [xb] - delaydelta - yb) ** 0.5
         if self.args.optimize_further and not ev:
             return -evf
         return ev
