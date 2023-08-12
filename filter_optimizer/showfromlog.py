@@ -111,6 +111,13 @@ class Experiment:
         (w, h) = signal.freqz  (b, a, 50000)
         (wgd, gd) = signal.group_delay ((b, a))
         if self.prefilter:
+            # Pre-Filter, only makes sense for original example
+            fir  = \
+                [ -0.033271, -0.019816,  0.169865,  0.415454
+                ,  0.415454,  0.169865, -0.019816, -0.033271
+                ]
+            fir_w, fir_h = signal.freqz (fir, [1.0], 50000)
+            h = fir_h * h
             t = 'Experiment with pre-filter'
         else:
             t = 'Experiment without pre-filter'
