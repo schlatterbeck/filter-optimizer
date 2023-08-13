@@ -130,6 +130,10 @@ class Experiment:
         if self.title:
             t = t + '\n' + self.title
         d = dict (fs = 1.0, title = t, bounds = [self.mag_l, self.mag_u])
+        if kw.get ('scale_rad', None):
+            d.update (fs = None)
+        if kw.get ('frequency', None):
+            d.update (fs = kw ['frequency'])
         d.update (scatter = kw ['scatter'])
         if fine:
             filterplot.plot_response \
@@ -140,7 +144,7 @@ class Experiment:
             filterplot.plot_response (w, h, **d)
         d.update (auto_ylimit = kw ['auto_ylimit'])
         d ['bounds'] = [self.del_l, self.del_u]
-        filterplot.plot_delay (wgd, gd, xmax = 0.35, **d)
+        filterplot.plot_delay (wgd, gd, **d)
         filterplot.pole_zero_plot (self.poles, self.zeros)
     # end def display
 # end class Experiment
@@ -152,11 +156,22 @@ def main (argv = sys.argv [1:]):
         , help    = 'File to parse, can contain multiple experiments'
         )
     cmd.add_argument \
+        ( '-f', '--frequency'
+        , help    = "Sampling frequency for X-axis, overrides --scale-rad"
+        , type    = float
+        )
+    cmd.add_argument \
         ( '--no-auto-ylimit'
         , help    = "Do not auto-limit the delay plot on Y-axis"
         , dest    = 'auto_ylimit'
         , default = True
         , action  = 'store_false'
+        )
+    cmd.add_argument \
+        ( '--scale-rad'
+        , help    = "Scale X by radians"
+        , default = False
+        , action  = 'store_true'
         )
     cmd.add_argument \
         ( '--scatter'

@@ -15,9 +15,11 @@ def update_conjugate_complex (numbers):
 
 class Filter_Bound (object):
 
+    default_n = 31
+
     def __init__ \
         ( self, xmin, xmax, ymin, ymax
-        , n = 6, use_cos = False, xx = []
+        , n = default_n, use_cos = False, xx = []
         , scale_by_pi = True
         ):
         self.xmin        = xmin
@@ -25,42 +27,69 @@ class Filter_Bound (object):
         self.ymin        = ymin
         self.ymax        = ymax
         self.scale_by_pi = scale_by_pi
-        self.vals = [xmin, xmax, ymin, ymax]
-        a = np.array (range (n)) / (n - 1.0)
-        if use_cos:
-            a = np.cos (a * np.pi) / -2.0 + 0.5
-        self.x = a * (xmax - xmin) + xmin
-        if scale_by_pi:
-            self.x *= 2 * np.pi
-        self.y = a * (ymax - ymin) + ymin
+        self.use_cos     = use_cos
+        self.n           = n
+        self.vals        = [xmin, xmax, ymin, ymax]
+        self.x, a        = self._gen_x ()
+        self.y           = a * (ymax - ymin) + ymin
         if xx:
             self.append (*xx)
     # end def __init__
+
+    def _gen_x (self):
+        a = np.array (range (self.n)) / (self.n - 1.0)
+        if self.use_cos:
+            a = np.cos (a * np.pi) / -2.0 + 0.5
+        x = a * (self.xmax - self.xmin) + self.xmin
+        if self.scale_by_pi:
+            x *= 2 * np.pi
+        return x, a
+    # end def _gen_x
 
     @classmethod
     def Parse (cls, s, scale_by_pi = True):
         args = s.split (',')
         l = len (args)
-        if not 4 <= l <= 6:
+        if l < 4:
             raise ValueError ("Invalid number of parameters: %d" % l)
         xmin, xmax, ymin, ymax = (float (x) for x in args [:4])
-        n = 31
+        n = cls.default_n
         if l > 4:
             n = int (args [4])
         use_cos = False
         if l > 5:
             use_cos = bool (int (args [5]))
+        xx = []
+        if l > 6:
+            xx = [float (f) for f in args [6:]]
         return cls \
-            (xmin, xmax, ymin, ymax, n, use_cos, scale_by_pi = scale_by_pi)
+            ( xmin, xmax, ymin, ymax
+            , n, use_cos, scale_by_pi = scale_by_pi, xx = xx
+            )
     # end def Parse
 
     def __str__ (self):
-        return ','.join (str (x) for x in self.vals)
+        v = copy (self.vals)
+        e = []
+        if self.n != self.default_n or self.n != len (self.x) or self.use_cos:
+            v.append (self.n)
+            if self.n != len (self.x):
+                x, a = self._gen_x ()
+                x = dict.fromkeys (x)
+                for xx in self.x:
+                    if xx not in x:
+                        e.append (xx)
+        if self.use_cos or e:
+            v.append (int (self.use_cos))
+        if e:
+            v.extend (e)
+        return ','.join ('%.8g' % val for val in v)
     # end def __str__
     __repr__ = __str__
 
     def append (self, *xx):
-        self.x = np.append (self.x, np.array (xx) * 2 * np.pi)
+        scale  = 2 * np.pi if self.scale_by_pi else 1
+        self.x = np.append (self.x, np.array (xx) * scale)
         self.y = np.append (self.y, [self.interpolate (k) for k in xx])
     # end def append
 
@@ -300,13 +329,17 @@ def plot_response \
             t = t + ' ' + title
     plt.title (t)
     xlabel = 'Freq [rad/sample]'
+    bd     = dict (scatter = scatter)
     if fs is not None:
         w = np.array (w) * fs / (2 * np.pi)
         xlabel = 'Freq (Hz)'
         if fs == 1.0:
             xlabel = '$\\Omega$'
+        bd.update (xscale = fs)
+    else:
+        bd.update (xscale = 2 * np.pi)
     for b in bounds:
-        b.plot (ax, scatter = scatter)
+        b.plot (ax, **bd)
     if logy:
         ax.plot (w, 20 * np.log10 (abs (h)), 'b')
         plt.ylabel ('Amplitude (dB)', color = 'b')
@@ -362,7 +395,10 @@ def plot_delay \
             for b in ubounds:
                 try:
                     if not b.scale_by_pi:
-                        x *= (2 * np.pi)
+                        if fs is not None:
+                            x *= (2 * np.pi)
+                    if fs is not None:
+                        x /= fs
                     yb = b.interpolate (x)
                 except ValueError:
                     continue
@@ -370,9 +406,10 @@ def plot_delay \
                 if delta is None or dd > delta:
                     delta = dd
         for b in bounds:
-            #ax.plot (b.x * fs / (2 * np.pi), b.y_transform (delta), 'g')
             pd = dict (scatter = scatter)
-            if fs is not None:
+            if fs is None:
+                pd.update (xscale = 2 * np.pi)
+            else:
                 pd.update (xscale = fs)
             b.plot (ax, offset = delta, **pd)
         if auto_ylimit and not ymin and not ymax:
