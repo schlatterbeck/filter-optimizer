@@ -40,6 +40,9 @@ class Experiment:
                 ]
         self.zeros = zeros
         self.poles = poles
+        filterplot.update_conjugate_complex (self.zeros)
+        filterplot.update_conjugate_complex (self.poles)
+        self.b, self.a = signal.zpk2tf (zeros, poles, self.a0)
     # end def __init__
 
     @classmethod
@@ -109,13 +112,10 @@ class Experiment:
     # end def Parse
 
     def display (self, fine = False, **kw):
-        filterplot.update_conjugate_complex (self.zeros)
-        filterplot.update_conjugate_complex (self.poles)
-        (b, a) = signal.zpk2tf (self.zeros, self.poles, self.a0)
-        (w, h) = signal.freqz  (b, a, 50000)
+        w, h = signal.freqz (self.b, self.a, 50000)
         r = np.arange (0, np.pi, np.pi / 512)
         r = np.array (sorted (np.concatenate ((r, self.del_u.x))))
-        (wgd, gd) = signal.group_delay ((b, a), r)
+        (wgd, gd) = signal.group_delay ((self.b, self.a), r)
         if self.prefilter:
             # Pre-Filter, only makes sense for original example
             fir  = \
@@ -154,6 +154,14 @@ def main (argv = sys.argv [1:]):
     cmd.add_argument \
         ( 'filename'
         , help    = 'File to parse, can contain multiple experiments'
+        , nargs   = '+'
+        )
+    cmd.add_argument \
+        ( '--dont-use-filename-as-title'
+        , help    = "Use internal parameters in file as title"
+        , dest    = 'filename_as_title'
+        , default = True
+        , action  = 'store_false'
         )
     cmd.add_argument \
         ( '-f', '--frequency'
@@ -186,13 +194,16 @@ def main (argv = sys.argv [1:]):
         , action  = 'store_true'
         )
     args = cmd.parse_args ()
-    with open (args.filename, 'r') as f:
-        while 1:
-            ex = Experiment.Parse (f)
-            if ex is None:
-                break
-            if ex.is_valid or args.show_failed:
-                ex.display (**vars (args))
+    for fn in args.filename:
+        with open (fn, 'r') as f:
+            while 1:
+                ex = Experiment.Parse (f)
+                if ex is None:
+                    break
+                if args.filename_as_title:
+                    ex.title = fn
+                if ex.is_valid or args.show_failed:
+                    ex.display (**vars (args))
 # end def main
 
 if __name__ == '__main__':
