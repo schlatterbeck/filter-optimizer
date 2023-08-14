@@ -108,14 +108,14 @@ class Experiment:
                 )
     # end def Parse
 
-    displayvars = ('auto_ylimit', 'scatter')
-
     def display (self, fine = False, **kw):
         filterplot.update_conjugate_complex (self.zeros)
         filterplot.update_conjugate_complex (self.poles)
         (b, a) = signal.zpk2tf (self.zeros, self.poles, self.a0)
         (w, h) = signal.freqz  (b, a, 50000)
-        (wgd, gd) = signal.group_delay ((b, a))
+        r = np.arange (0, np.pi, np.pi / 512)
+        r = np.array (sorted (np.concatenate ((r, self.del_u.x))))
+        (wgd, gd) = signal.group_delay ((b, a), r)
         if self.prefilter:
             # Pre-Filter, only makes sense for original example
             fir  = \
@@ -134,7 +134,7 @@ class Experiment:
             d.update (fs = None)
         if kw.get ('frequency', None):
             d.update (fs = kw ['frequency'])
-        d.update (scatter = kw ['scatter'])
+        d.update (scatter = kw.get ('scatter', None))
         if fine:
             filterplot.plot_response \
                 (w, h, xmax = 0.4,  ymax = 0.1, ymin = -0.1, **d)
@@ -142,7 +142,7 @@ class Experiment:
                 (w, h, xmin = 0.25, ymax = -5, **d)
         else:
             filterplot.plot_response (w, h, **d)
-        d.update (auto_ylimit = kw ['auto_ylimit'])
+        d.update (auto_ylimit = kw.get ('auto_ylimit'))
         d ['bounds'] = [self.del_l, self.del_u]
         filterplot.plot_delay (wgd, gd, **d)
         filterplot.pole_zero_plot (self.poles, self.zeros)

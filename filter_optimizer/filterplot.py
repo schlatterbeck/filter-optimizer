@@ -75,7 +75,7 @@ class Filter_Bound (object):
             v.append (self.n)
             if self.n != len (self.x):
                 x, a = self._gen_x ()
-                x = dict.fromkeys (x)
+                x = set (x)
                 for xx in self.x:
                     if xx not in x:
                         e.append (xx)
@@ -366,6 +366,11 @@ def plot_delay \
     , logx = False, xmin = 0.0, xmax = None, ymin = None, ymax = None
     , bounds = [], auto_ylimit = True, scatter = False
     ):
+    """ Plot delay (in samples).
+        We can get pre-scaled values, this is indicated in fs. Default
+        (with fs None) is the sample frequency in rad (so values range
+        from 0 to pi).
+    """
 
     fig = plt.figure ()
     ax  = fig.add_subplot (111)

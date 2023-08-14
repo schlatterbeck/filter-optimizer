@@ -1,0 +1,135 @@
+/* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ]*/
+/* [ Created with wxMaxima version 22.12.0 ] */
+/* [wxMaxima: comment start ]
+[vondras2002] Multi-criterion Filter Design via Differential Evolution Method for Function Minimization, Jan Vondras and Pravoslav Martinek, 2002
+   [wxMaxima: comment end   ] */
+
+
+/* [wxMaxima: input   start ] */
+aa:1/(s*C_7)+s*L_3;
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+ab:1/(s*C_6)+R_2;
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+a:R_U3=1/(1/(aa)+1/1/(ab));
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+ba:(1/(s*C_4)+s*L_2);
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+bb:(1/(s*C_5)+R_U3);
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+b:R_U2=1/(1/ba+1/bb);
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+ca:(1/(s*C_2)+s*L_1);
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+cb:(1/(s*C_3)+R_U2);
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+c:R_U1=1/(1/ca+1/cb);
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+d:R_V=R_1+1/(s*C_1);
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+e:U_0/U_1=(R_V+R_U1)/R_U1;
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+f:solve(U_1/U_2=(1/(s*C_3)+R_U2)/R_U2,U_1)[1];
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+e_s:solve(subst(rhs(f),U_1,e),U_2)[1];
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+g:U_2/U_3=(1/(s*C_5)+R_U3)/R_U3;
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+g_s:solve(subst(rhs(e_s),U_2,g),U_3)[1];
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+h:U_3/U_4=(1/(s*C_6)+R_2)/R_2;
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+h_s:solve(subst(rhs(g_s),U_3,h),U_4)[1];
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+tf:x=rhs(h_s)/U_0;
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+tf1:subst(rhs(d),R_V,tf);
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+tf2:ratsimp(subst(rhs(c),R_U1,tf1));
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+tf3:ratsimp(subst(rhs(b),R_U2,tf2));
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+tf4:ratsimp(subst(rhs(a),R_U3,tf3));
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+tf4,R_1=50,R_2=50,L_1=4.27923,L_2=4.38213,L_3=4.03577,C_1=2.415e-3,C_2=9.5655e-3,C_3=1.365e-3,C_4=6e-3,C_5=1.26e-3,C_6=1.91e-3,C_7=22.165e-3;
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+ratsimp([a,b,c,d,e,f,g,h,tf]);
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+linsolve([a,b,c,d,e,f,g,h,tf],x);
+/* [wxMaxima: input   end   ] */
+
+
+
+/* Old versions of Maxima abort on loading files that end in a comment. */
+"Created with wxMaxima 22.12.0"$
