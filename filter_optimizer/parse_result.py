@@ -46,7 +46,7 @@ def main (argv = sys.argv [1:]):
         params = n.split ('-')
         d = {}
         # Params encoded in filename
-        if len (params) > 4:
+        if len (params) > 6:
             d ['variant'] = params [1]
             d ['cross']   = params [2]
             d ['np']      = params [3]
@@ -65,8 +65,10 @@ def main (argv = sys.argv [1:]):
             found = False
             for line in f:
                 if line.startswith ('The Best Evaluation:'):
-                    found      = True
-                    d ['eval'] = line.split (':', 1) [1].strip ().rstrip ('.')
+                    found       = True
+                    d ['eval']  = line.split (':', 1) [1].strip ().rstrip ('.')
+                    # Default for crossover type
+                    d ['cross'] = 'bin'
                     continue
                 if found:
                     if line.startswith ('#'):
@@ -96,3 +98,6 @@ def main (argv = sys.argv [1:]):
                         else:
                             d [key] = v
 # end def main
+
+if __name__ == '__main__':
+    main ()
