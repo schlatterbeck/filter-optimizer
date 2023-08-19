@@ -321,10 +321,11 @@ def main ():
         , type    = float
         )
     cmd.add_argument \
-        ( '--dither-per-individual'
-        , help    = "Use dither per individual not per generation"
-        , default = False
-        , action  = 'store_true'
+        ( '--dither-per-generation'
+        , help    = "Use dither per generation not per individual"
+        , dest    = 'dither_per_individual'
+        , default = True
+        , action  = 'store_false'
         )
     cmd.add_argument \
         ( '--exponential-crossover'

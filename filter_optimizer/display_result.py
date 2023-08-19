@@ -129,12 +129,14 @@ class Eval_Data:
                 self.result_by_key [key]['neval'].append (rec ['neval'])
             else:
                 self.result_by_key [key]['fail'] += 1
+                if self.args.count_unsuccessful:
+                    self.result_by_key [key]['neval'].append (rec ['neval'])
                 self.result_by_key [key]['eval'].append (rec ['eval'])
         for k in self.result_by_key:
             r = self.result_by_key [k]
             r ['eval']  = np.array (r ['eval'])
             r ['neval'] = np.array (r ['neval'])
-            n = r ['success']
+            n = len (r ['neval'])
             if n:
                 r ['mean'] = sum (r ['neval']) / n
                 r ['stdd'] = sqrt (sum ((r ['neval'] - r ['mean']) ** 2)) / n
@@ -163,13 +165,12 @@ class Eval_Data:
                 if a > xmax:
                     xmax = a
             y2.append ((r ['success']) / (r ['success'] + r ['fail']) * 100)
-            if r ['success']:
+            if r ['success'] or self.args.count_unsuccessful:
                 y1.append (r ['mean'])
                 nev.append (r ['neval'])
             else:
                 y1.append (0)
                 nev.append (np.array ([]))
-        #nev = np.array (nev)
 
         plt.title \
             ( 'Evaluations, Successes\n'
@@ -180,11 +181,8 @@ class Eval_Data:
             )
         plt.xlabel (self.x_name)
         tick = (xmax - xmin) / len (x) / 2.
-        ml   = 0
-        for r in nev:
-            if ml < len (r):
-                ml = len (r)
-        pos = x
+        ml   = max (len (r) for r in nev)
+        pos  = x
         if not isinstance (x [0], Number):
             pos  = np.arange (0, 1, 1 / len (x))
             tick = 1 / len (x)
@@ -225,6 +223,11 @@ def main ():
     cmd.add_argument \
         ( '--by-filename'
         , help    = "Compare by filename during eval"
+        , action  = 'store_true'
+        )
+    cmd.add_argument \
+        ( '--count-unsuccessful'
+        , help    = "Count unsuccessful tries"
         , action  = 'store_true'
         )
     cmd.add_argument \
@@ -277,7 +280,7 @@ def main ():
         , type    = int
         , help    = "Population size, default=%(default)s"
         , dest    = 'np'
-        , default = None
+        , default = 150
         )
     cmd.add_argument \
         ( '-s', '--sort-population'
