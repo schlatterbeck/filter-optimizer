@@ -1,5 +1,10 @@
 /* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ]*/
 /* [ Created with wxMaxima version 22.12.0 ] */
+/* [wxMaxima: comment start ]
+[vondras2002] Multi-criterion Filter Design via Differential Evolution Method for Function Minimization, Jan Vondras and Pravoslav Martinek, 2002
+   [wxMaxima: comment end   ] */
+
+
 /* [wxMaxima: input   start ] */
 a:R_U3 = 1/(1/(1/(s*C_7)+s*L_3)+1/(1/(s*C_6)+R_2));
 /* [wxMaxima: input   end   ] */
