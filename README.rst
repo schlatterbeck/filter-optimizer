@@ -74,7 +74,7 @@ resulting in the magnitude graph in the following figure. Note that this
 program is interactive and we can zoom into the graph |--| which
 unfortunately is not possible here.
 
-.. figure:: https://raw.githubusercontent.com/schlatterbeck/filter-optimizer/master/by2-mag.png
+.. figure:: https://raw.githubusercontent.com/schlatterbeck/filter-optimizer/master/pics/by2-mag.png
     :align: center
 
 The green lines indicate the specified magnitude bounds while the blue
@@ -82,12 +82,12 @@ line is the filter magnitude. The X-axis is the frequency in units of
 the sampling rate. The passband cannot be seen clearly so this is
 magnified in the following graph
 
-.. figure:: https://raw.githubusercontent.com/schlatterbeck/filter-optimizer/master/by2-mag-pass.png
+.. figure:: https://raw.githubusercontent.com/schlatterbeck/filter-optimizer/master/pics/by2-mag-pass.png
     :align: center
 
 The group delay is shown in the next figure
 
-.. figure:: https://raw.githubusercontent.com/schlatterbeck/filter-optimizer/master/by2-delay.png
+.. figure:: https://raw.githubusercontent.com/schlatterbeck/filter-optimizer/master/pics/by2-delay.png
     :align: center
 
 Again the green lines show the bounds while the blue line reflects the
@@ -96,7 +96,7 @@ not in absolute samples but relative to the middle of the delay.
 
 The pole zero plot for this filter can be seen in the next figure
 
-.. figure:: https://raw.githubusercontent.com/schlatterbeck/filter-optimizer/master/by2-pz.png
+.. figure:: https://raw.githubusercontent.com/schlatterbeck/filter-optimizer/master/pics/by2-pz.png
     :align: center
 
 
@@ -120,16 +120,16 @@ pole-zero plot) but it still fulfills the requirements::
 .. _`IIR-Filter jupyter notebook`:
     https://github.com/schlatterbeck/filter-optimizer/blob/master/IIR_Filter.ipynb
 
-.. figure:: https://raw.githubusercontent.com/schlatterbeck/filter-optimizer/master/by5pre-mag.png
+.. figure:: https://raw.githubusercontent.com/schlatterbeck/filter-optimizer/master/pics/by5pre-mag.png
     :align: center
 
-.. figure:: https://raw.githubusercontent.com/schlatterbeck/filter-optimizer/master/by5pre-mag-pass.png
+.. figure:: https://raw.githubusercontent.com/schlatterbeck/filter-optimizer/master/pics/by5pre-mag-pass.png
     :align: center
 
-.. figure:: https://raw.githubusercontent.com/schlatterbeck/filter-optimizer/master/by5pre-delay.png
+.. figure:: https://raw.githubusercontent.com/schlatterbeck/filter-optimizer/master/pics/by5pre-delay.png
     :align: center
 
-.. figure:: https://raw.githubusercontent.com/schlatterbeck/filter-optimizer/master/by5pre-pz.png
+.. figure:: https://raw.githubusercontent.com/schlatterbeck/filter-optimizer/master/pics/by5pre-pz.png
     :align: center
 
 
@@ -167,7 +167,7 @@ When we zoom in we find that the constraints seem to be violated at
 certain positions, we see two peaks overflowing the upper green line and
 also the lower green line seems to be violated.
 
-.. figure:: https://raw.githubusercontent.com/schlatterbeck/filter-optimizer/master/hi-constr-mag-pass.png
+.. figure:: https://raw.githubusercontent.com/schlatterbeck/filter-optimizer/master/pics/hi-constr-mag-pass.png
     :align: center
 
 To see what is going on we can use the ``--scatter`` option when
@@ -176,14 +176,14 @@ we actually test the bounds. We see that due to the raised cosine
 distribution of points we actually have huge gaps in the points where we
 test the boundaries.
 
-.. figure:: https://raw.githubusercontent.com/schlatterbeck/filter-optimizer/master/hi-constr-mag-pass-1.png
+.. figure:: https://raw.githubusercontent.com/schlatterbeck/filter-optimizer/master/pics/hi-constr-mag-pass-1.png
     :align: center
 
 And even the seemingly high violation happens to pass between two test
 points. So when setting up the bounds you should check that the number
 of test points is high enough and verify that no violations occur.
 
-.. figure:: https://raw.githubusercontent.com/schlatterbeck/filter-optimizer/master/hi-constr-mag-pass-2.png
+.. figure:: https://raw.githubusercontent.com/schlatterbeck/filter-optimizer/master/pics/hi-constr-mag-pass-2.png
     :align: center
 
 
