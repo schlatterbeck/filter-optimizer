@@ -286,8 +286,11 @@ def main ():
         """ gets 4 mandatory parameters separated with comma: min-x,
             max-x, min-y, max-y and two optional parameters: The number of
             points (default 31) and if we should apply raised cosine
-            transform (making the points tighter at the bounds). Can be
-            specified multiple times
+            transform (making the points tighter at the bounds).
+            After the two optional parameters, additional X-values can
+            be specified (adding more points in crucial positions), the
+            Y values for these X-values are linearly interpolated.
+            This option can be specified multiple times.
         """
     cmd = ArgumentParser ()
     cmd.add_argument \
