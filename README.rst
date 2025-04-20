@@ -101,7 +101,7 @@ The pole zero plot for this filter can be seen in the next figure
 
 
 The same experiment can be run with a pre-filter, in the paper [3]_ an
-existing filter is asumed (the magnitude respoonse of the pre-filter is
+existing filter is asumed (the magnitude response of the pre-filter is
 shown in the `IIR-Filter jupyter notebook`_) and the goal is to design a
 second filter so that both filter together fulfill the requirements. We
 see that we get a completely different filter (e.g. when looking at the
@@ -154,7 +154,7 @@ band ripple. I leave it to the reader to plot the results::
     -U 1.5,3.14159265,1.25,1.25,100 --dont-scale-by-pi -R6 >! 06vond+1x.out
 
 Finally we have another example of a high-pass filter with tighter
-constraints in the transition band. ::
+constraints in the transition band::
 
     mpirun --machinefile ~/.mpi-openmpi-cat  --np 8 filter-optimizer \
     -P 7 -Z 7 -u 0,1,-70,-70,100 -u 1,1.5,0.075,0.075,100,0,1.174 \
