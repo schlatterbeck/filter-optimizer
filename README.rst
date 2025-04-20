@@ -88,7 +88,8 @@ Example call
 .. [3] Rainer Storn. Differential evolution design of an IIR-filter with
     requirements for magnitude and group delay. Technical Report
     TR-95-026, International Computer Science Institute (ICSI), June 1995.
-    Available online `from ICSI`_
+    Available online `from ICSI`_ |--| as of this writing the links
+    seems to be down.
 
 .. _`from ICSI`:
     http://www.icsi.berkeley.edu/ftp/global/pub/techreports/1995/tr-95-026.pdf
