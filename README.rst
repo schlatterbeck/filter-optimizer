@@ -68,7 +68,7 @@ Experiment without pre-filter, this is from the Storn paper [3]_::
 
 The result in ``by2.out`` can be plotted with the command::
 
-    filter-show-from-log --scatter by5-prefilter.out
+    filter-show-from-log by5-prefilter.out
 
 resulting in the magnitude graph in the following figure. Note that this
 program is interactive and we can zoom into the graph |--| which
