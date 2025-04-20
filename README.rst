@@ -55,11 +55,29 @@ Example call
     >! byparam.out
 
 ::
+
     mpirun --machinefile ~/.mpi-openmpi-cat  --np 8 filter-optimizer -P
-    4 -Z 4 -l 0,1,-0.025,-0.025,100 -u 0,1,0.025,0.025,100
-    -l1,1.1739,-12,-12 -u 1,1.3913,5,5,100 -u 1.3913,3.14159265,-40,-40
-    -L 0,1,-1.25,-1.25 -U 0,1,1.25,1.25 -R1 --dont-scale-by-pi >!
-    01vond.out
+    7 -Z 7 -u 0,1,-70,-70,100 -u 1,1.5,2.5,2.5,100
+    -l1.5,3.14159265,-0.075,-0.075,31,1 -u
+    1.5,3.14159265,0.075,0.075,31,1 -L 1.5,3.14159265,-1.25,-1.25,100 -U
+    1.5,3.14159265,1.25,1.25,100 --dont-scale-by-pi -R2 >! 02vond.out
+
+::
+
+    mpirun --machinefile ~/.mpi-openmpi-cat  --np 8 filter-optimizer -P
+    7 -Z 7 -u 0,1,-70,-70,100,0,0.9542 -u 1,1.5,2.5,2.5,100
+    -l1.5,3.14159265,-0.075,-0.075,31,1 -u
+    1.5,3.14159265,0.075,0.075,31,1 -L 1.5,3.14159265,-1.25,-1.25,100 -U
+    1.5,3.14159265,1.25,1.25,100 --dont-scale-by-pi -R2 >! 02vond+1x.out
+
+::
+
+    mpirun --machinefile ~/.mpi-openmpi-cat  --np 8 filter-optimizer -P
+    7 -Z 7 -u 0,1,-70,-70,100 -u 1,1.5,0.075,0.075,100,0,1.174
+    -l1.5,3.14159265,-0.075,-0.075,31,1 -u
+    1.5,3.14159265,0.075,0.075,31,1 -L 1.5,3.14159265,-1.25,-1.25,100 -U
+    1.5,3.14159265,1.25,1.25,100 --dont-scale-by-pi -R8 >!
+    hi-constraint-8+1.out
 
 .. [1] John G. Proakis and Dimitris G. Manolakis. Digital Signal
     Processing: Principles, Algorithms, and Applications. Pearson

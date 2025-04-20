@@ -33,12 +33,11 @@ dynamic         = ["version"]
 authors         = [{ name="Ralf Schlatterbeck", email="rsc@runtux.com" }, ]
 description     = "Optimize digital filters with differential evolution"
 readme          = "README.rst"
-license         = {text = "MIT License"}
+license         = "MIT"
 requires-python = '>=3.7'
 dependencies    = ['matplotlib', 'numpy', 'scipy', 'rsclib']
 classifiers     = [
           'Development Status :: 3 - Alpha'
-        , 'License :: OSI Approved :: MIT License'
         , 'Operating System :: OS Independent'
         , 'Programming Language :: Python'
         , 'Intended Audience :: Science/Research'
